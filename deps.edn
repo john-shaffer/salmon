@@ -1,10 +1,10 @@
 {:paths [""]
- :deps { ;; This is in core-deps too, but cider only sees it here
-                 org.clojure/clojure {:mvn/version "1.11.0-rc1"}
-                 hashp/hashp {:mvn/version "0.2.1"}
+ :deps {;; This is in core-deps too, but cider only sees it here
+        org.clojure/clojure {:mvn/version "1.11.0-rc1"}
+        babashka/fs {:mvn/version "0.1.4"}
+        hashp/hashp {:mvn/version "0.2.1"}
 
-                 poly/aws-api {:local/root "components/aws-api"}
-                 poly/cloudformation {:local/root "components/cloudformation"}
-                 poly/core-deps {:local/root "components/core-deps"}
-                 poly/util {:local/root "components/util"}
-                 poly/validation {:local/root "components/validation"}}}
+        poly/aws-api {:local/root "components/aws-api"}
+        poly/cloudformation {:local/root "components/cloudformation"}
+        poly/core-deps {:local/root "components/core-deps"}
+        poly/validation {:local/root "components/validation"}}}

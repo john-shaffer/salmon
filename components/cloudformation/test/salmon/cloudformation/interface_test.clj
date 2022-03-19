@@ -13,6 +13,7 @@
    {:services {:comp {:conf {:name :conf}
                       :start (fn [_ _ _] {:started? true})
                       :stop (fn [_ _ _])}
+               :T {:start (fn [_ _ _] :T)}
                :x :X
                :y "Y!"
                :stack-a stack}}
@@ -52,7 +53,11 @@
          #"Pre-validation failed: E1001 Top level template section a is not valid"
          (val/pre-validate! (system-a (stack-a :lint? true :template {:a 1}))))))
   (testing "cfn-lint works in :pre-validate when all refs have been resolved"
-    (is (thrown-with-msg?
-         ExceptionInfo
-         #"Pre-validation failed: E1001 Top level template section a is not valid"
-         (val/pre-validate! (system-a (stack-a :lint? true :template {:a (ds/ref :y)})))))))
+      (is (thrown-with-msg?
+           ExceptionInfo
+           #"Pre-validation failed: E1001 Top level template section a is not valid"
+           (val/pre-validate! (system-a (stack-a :lint? true :template {:a (ds/ref :y)}))))))
+  (testing "Pre-validation linting doesn't run for a ref to an un-started services"
+    (is (val/pre-validate! (system-a (stack-a :lint? true :template (ds/ref :T))))))
+  (testing "Pre-validation linting doesn't run if the template has a nested ref to an un-started service"
+    (is (val/pre-validate! (system-a (stack-a :lint? true :template {:a (ds/ref :T)}))))))

@@ -1,0 +1,7 @@
+{
+    "calva.evalOnSave": true,
+    "calva.testOnSave": true,
+    "editor.formatOnPaste": true,
+    "editor.formatOnSave": true,
+    "editor.formatOnType": true
+}

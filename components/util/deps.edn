@@ -1,2 +1,0 @@
-{:paths ["src"]
- :deps {poly/core-deps {:local/root "../core-deps"}}}
