@@ -48,42 +48,34 @@
           (not (fn? (get-in resolved [% :start]))))
      (refs x))))
 
-; template is a file
-; template is a string (check validity of json)
-(defn stack [& {:keys [lint?] :as conf}]
-  #_[& {:keys [capabilities name parameters template timeout-minutes validate?]
-        :or {validate? true}}]
-  (let [pre-schema (val/allow-refs stack-schema)]
-    {:conf (assoc conf :comp/name :stack)
-     :start
-     (fn [_ _ _])
-     :stop
-     (fn [_ _ _])
-     :salmon/dry-run
-     (fn [_ _ _])
-     :salmon/pre-schema pre-schema
-     :salmon/pre-validate
-     (fn [conf _ {:keys [->validation]
-                  ::ds/keys [component-def]
-                  :as system}]
-       (let [schema (:salmon/pre-schema component-def)
-             template (:template (:conf component-def))]
-         (if-let [errors (and schema (m/explain schema conf))]
-           (->validation errors)
-           (when (refs-resolveable? system (:template (:conf component-def)))
-             (cond
-               (not (map? template)) (->validation {:message "Template must be a map."})
-               (empty? template) (->validation {:message "Template must not be empty."})
-               :else (when lint?
-                       (let [{:keys [message]} (template-data :template template)]
-                         (when (seq message)
-                           (->validation {:message message})))))))))
-     :schema stack-schema
-     :validate
-     (fn [conf _ _] conf nil)}))
+(defn validate [{:keys [lint?] :as conf} system schema template & {:keys [pre?]}]
+  (if-let [errors (and schema (m/explain schema conf))]
+    errors
+    (cond
+      (and pre? (not (refs-resolveable? system template))) nil
+      (not (map? template)) {:message "Template must be a map."}
+      (empty? template) {:message "Template must not be empty."}
+      :else (when lint?
+              (let [{:keys [message]} (template-data :template template)]
+                (when (seq message)
+                  {:message message}))))))
 
-;    Capabilities: ["CAPABILITY_IAM"],
-;    Parameters: event.Parameters,
-;    StackName: event.StackName,
-;    TemplateURL: TEMPLATE_URL,
-;    TimeoutInMinutes: 60
+(defn stack [& {:as conf}]
+  {:conf (assoc conf :comp/name :stack)
+   :start
+   (fn [conf _ {:keys [->validation] ::ds/keys [component-def resolved-component] :as system}]
+     (if-let [errors (validate conf system
+                               (:schema component-def)
+                               (:template (:conf resolved-component)))]
+       (->validation errors)))
+   :stop
+   (fn [_ _ _])
+   :salmon/pre-schema (val/allow-refs stack-schema)
+   :salmon/pre-validate
+   (fn [conf _ {:keys [->validation] ::ds/keys [component-def] :as system}]
+     (some-> (validate conf system
+                       (:salmon/pre-schema component-def)
+                       (:template (:conf component-def))
+                       :pre? true)
+             ->validation))
+   :schema stack-schema})

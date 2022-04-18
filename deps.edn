@@ -6,6 +6,7 @@
         poly/aws-api {:local/root "components/aws-api"}
         poly/cloudformation {:local/root "components/cloudformation"}
         poly/core-deps {:local/root "components/core-deps"}
+        poly/signal {:local/root "components/signal"}
         poly/validation {:local/root "components/validation"}}
  :aliases
  {:test {:extra-deps {lambdaisland/kaocha {:git/url "https://github.com/insilica/kaocha.git"
