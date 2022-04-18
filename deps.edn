@@ -1,6 +1,5 @@
 {:paths [""]
- :deps {;; This is in core-deps too, but cider only sees it here
-        org.clojure/clojure {:mvn/version "1.11.0-rc1"}
+ :deps {org.clojure/clojure {:mvn/version "1.11.1"}
         babashka/fs {:mvn/version "0.1.4"}
         hashp/hashp {:mvn/version "0.2.1"}
 
