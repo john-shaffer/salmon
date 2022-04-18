@@ -1,5 +1,16 @@
 {
   "calva.evalOnSave": true,
+  "calva.replConnectSequences": [
+    {
+      "afterCLJReplJackInCode": "(require 'hashp.core)",
+      "cljsType": "none",
+      "menuSelections": {
+        "cljAliases": ["test"]
+      },
+      "name": "Salmon",
+      "projectType": "deps.edn"
+    }
+  ],
   "calva.testOnSave": true,
   "editor.formatOnPaste": true,
   "editor.formatOnSave": true,
