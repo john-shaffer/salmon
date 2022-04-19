@@ -40,35 +40,33 @@
       (and pre? (not (val/refs-resolveable? system template))) nil
       (not (map? template)) {:message "Template must be a map."}
       (empty? template) {:message "Template must not be empty."}
-      :else (when lint?
-              (let [{:keys [message]} (template-data :template template)]
-                (when (seq message)
-                  {:message message}))))))
+      lint? (let [{:keys [message]} (template-data :template template)]
+              (when (seq message)
+                {:message message})))))
+
+(defn start! [_ _ {:keys [->error ->validation]
+                   ::ds/keys [component-def resolved-component]
+                   :as system}]
+  (let [conf (:conf resolved-component)
+        template (:template conf)
+        errors (validate conf system (:schema component-def) template)]
+    (if errors
+      (->validation errors)
+      (let [client (aws/client {:api :cloudformation})
+            r (aws/invoke client
+                          {:op :CreateStack
+                           :request {:StackName (:name conf)
+                                     :TemplateBody
+                                     (:json (template-data :template template))}})]
+        (if (:cognitect.anomalies/category r)
+          (->error {:message "Error creating stack"
+                    :response r})
+          {:client client})))))
 
 (defn stack [& {:as conf}]
   {:conf (assoc conf :comp/name :stack)
-   :start
-   (fn [_ _ {:keys [->error ->validation] 
-                ::ds/keys [component-def resolved-component]
-                :as system}]
-     (let [conf (:conf resolved-component)
-           template (:template conf)]
-       (if-let [errors (validate conf system
-                                 (:schema component-def)
-                                 template)]
-         (->validation errors)
-         (let [client (aws/client {:api :cloudformation})
-               r (aws/invoke client
-                             {:op :CreateStack
-                              :request {:StackName (:name conf)
-                                        :TemplateBody
-                                        (:json (template-data :template template))}})]
-           (if (:cognitect.anomalies/category r)
-             (->error {:message "Error creating stack"
-                       :response r})
-             {:client client})))))
-   :stop
-   (fn [_ _ _])
+   :start start!
+   :stop (fn [_ _ _])
    :salmon/pre-schema (val/allow-refs stack-schema)
    :salmon/pre-validate
    (fn [conf _ {:keys [->validation] ::ds/keys [component-def] :as system}]
