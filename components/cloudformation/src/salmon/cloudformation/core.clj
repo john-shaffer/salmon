@@ -1,12 +1,12 @@
 (ns salmon.cloudformation.core
-  (:require
-   [babashka.fs :as fs]
-   [clojure.data.json :as json]
-   [clojure.java.shell :as sh]
-   [com.rpl.specter :as sp]
-   [donut.system :as ds]
-   [malli.core :as m]
-   [salmon.validation.interface :as val]))
+  (:require [babashka.fs :as fs]
+            [clojure.data.json :as json]
+            [clojure.java.shell :as sh]
+            [cognitect.aws.client.api :as aws]
+            [com.rpl.specter :as sp]
+            [donut.system :as ds]
+            [malli.core :as m]
+            [salmon.validation.interface :as val]))
 
 (defn cfn-lint! [template]
   (fs/with-temp-dir [dir {:prefix (str "salmon-cloudformation")}]
@@ -63,11 +63,25 @@
 (defn stack [& {:as conf}]
   {:conf (assoc conf :comp/name :stack)
    :start
-   (fn [conf _ {:keys [->validation] ::ds/keys [component-def resolved-component] :as system}]
-     (if-let [errors (validate conf system
-                               (:schema component-def)
-                               (:template (:conf resolved-component)))]
-       (->validation errors)))
+   (fn [_ _ {:keys [->error ->validation] 
+                ::ds/keys [component-def resolved-component]
+                :as system}]
+     (let [conf (:conf resolved-component)
+           template (:template conf)]
+       (if-let [errors (validate conf system
+                                 (:schema component-def)
+                                 template)]
+         (->validation errors)
+         (let [client (aws/client {:api :cloudformation})
+               r (aws/invoke client
+                             {:op :CreateStack
+                              :request {:StackName (:name conf)
+                                        :TemplateBody
+                                        (:json (template-data :template template))}})]
+           (if (:cognitect.anomalies/category r)
+             (->error {:message "Error creating stack"
+                       :response r})
+             {:client client})))))
    :stop
    (fn [_ _ _])
    :salmon/pre-schema (val/allow-refs stack-schema)

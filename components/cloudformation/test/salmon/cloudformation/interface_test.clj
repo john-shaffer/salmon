@@ -77,3 +77,16 @@
          ExceptionInfo
          #"Validation failed during :start: E1001 Top level template section a is not valid"
          (sig/start! (system-a (stack-a :lint? true :template {:a (ds/ref :empty)})))))))
+
+(def template
+  {:AWSTemplateFormatVersion "2010-09-09"
+   :Resources
+   {:OAI
+    {:Type "AWS::CloudFront::CloudFrontOriginAccessIdentity"
+     :Properties
+     {:CloudFrontOriginAccessIdentityConfig
+      {:Comment "Test"}}}}})
+
+(deftest test-deploy
+  (sig/start! (system-a (stack-a :lint? true
+                                 :template template))))
