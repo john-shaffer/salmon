@@ -9,3 +9,9 @@
   known values before the other values are known."
   [map-schema]
   (core/allow-refs map-schema))
+
+(defn refs-resolveable?
+  "Returns true if all refs refer to either started services or constant
+   values."
+  [system x]
+  (core/refs-resolveable? system x))

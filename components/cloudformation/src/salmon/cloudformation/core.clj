@@ -3,7 +3,6 @@
             [clojure.data.json :as json]
             [clojure.java.shell :as sh]
             [cognitect.aws.client.api :as aws]
-            [com.rpl.specter :as sp]
             [donut.system :as ds]
             [malli.core :as m]
             [salmon.validation.interface :as val]))
@@ -34,25 +33,11 @@
      [:string {:min 1 :max 128}]
      [:re #"^[a-zA-Z][-a-zA-Z0-9]*$"]]]])
 
-(defn refs [x]
-  (map second (sp/select (sp/walker ds/ref?) x)))
-
-(defn refs-resolveable?
-  "Returns true if all refs refer to either started services or constant
-   values."
-  [system x]
-  (let [instances (-> system ::ds/instances :services)
-        resolved (-> system ::ds/resolved :services)]
-    (every?
-     #(or (get instances %)
-          (not (fn? (get-in resolved [% :start]))))
-     (refs x))))
-
 (defn validate [{:keys [lint?] :as conf} system schema template & {:keys [pre?]}]
   (if-let [errors (and schema (m/explain schema conf))]
     errors
     (cond
-      (and pre? (not (refs-resolveable? system template))) nil
+      (and pre? (not (val/refs-resolveable? system template))) nil
       (not (map? template)) {:message "Template must be a map."}
       (empty? template) {:message "Template must not be empty."}
       :else (when lint?
