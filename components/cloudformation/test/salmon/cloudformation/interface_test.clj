@@ -90,3 +90,10 @@
 (deftest test-deploy
   (sig/start! (system-a (stack-a :lint? true
                                  :template template))))
+
+(deftest test-aws-error-messages
+  (testing "AWS error messages are included in thrown exceptions"
+    (is (thrown-with-msg?
+         ExceptionInfo
+         #".*Error creating stack.*Template format error"
+         (sig/start! (system-a (stack-a :template {:a 1})))))))

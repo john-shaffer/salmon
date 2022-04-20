@@ -84,7 +84,9 @@
       (let [client (aws/client {:api :cloudformation})
             r (cou-stack! client conf (:json (template-data :template template)))]
         (if (:cognitect.anomalies/category r)
-          (->error {:message "Error creating stack"
+          (->error {:message
+                    (str "Error creating stack"
+                         (some->> r aws-error-message (str ": ")))
                     :response r})
           {:client client})))))
 
