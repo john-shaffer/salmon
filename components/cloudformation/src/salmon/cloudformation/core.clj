@@ -44,6 +44,35 @@
               (when (seq message)
                 {:message message})))))
 
+(defn aws-error-code [response]
+  (some-> response :ErrorResponse :Error :Code))
+
+(defn aws-error-message [response]
+  (some-> response :ErrorResponse :Error :Message))
+
+(declare update-stack!)
+
+(defn create-stack! [client request]
+  (aws/invoke client {:op :CreateStack :request request}))
+
+(defn update-stack! [client request]
+  (let [r (aws/invoke client {:op :UpdateStack :request request})]
+    (when-not (and (= "ValidationError" (aws-error-code r))
+                   (= "No updates are to be performed." (aws-error-message r)))
+      r)))
+
+(defn cou-stack!
+  "Create a new stack or update an existing one with the same name."
+  [client {:keys [name]} template-json]
+  (let [request {:StackName name
+                 :TemplateBody template-json}
+        r (aws/invoke client {:op :DescribeStacks
+                              :request {:StackName name}})]
+    (cond
+      (= "ValidationError" (aws-error-code r)) (create-stack! client request)
+      (:cognitect.anomalies/category r) r
+      :else (update-stack! client request))))
+
 (defn start! [_ _ {:keys [->error ->validation]
                    ::ds/keys [component-def resolved-component]
                    :as system}]
@@ -53,11 +82,7 @@
     (if errors
       (->validation errors)
       (let [client (aws/client {:api :cloudformation})
-            r (aws/invoke client
-                          {:op :CreateStack
-                           :request {:StackName (:name conf)
-                                     :TemplateBody
-                                     (:json (template-data :template template))}})]
+            r (cou-stack! client conf (:json (template-data :template template)))]
         (if (:cognitect.anomalies/category r)
           (->error {:message "Error creating stack"
                     :response r})
