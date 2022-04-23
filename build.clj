@@ -4,7 +4,7 @@
             [org.corfield.build :as bb]))
 
 (def lib 'org.clojars.john-shaffer/salmon)
-(def version (format "0.1.%s" (b/git-count-revs nil)))
+(def version "0.1.0")
 (defn get-version [opts]
   (str version (when (:snapshot opts) "-SNAPSHOT")))
 
