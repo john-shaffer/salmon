@@ -73,27 +73,33 @@
       (:cognitect.anomalies/category r) r
       :else (update-stack! client request))))
 
-(defn start! [_ instance {:keys [->error ->validation]
-                          ::ds/keys [component-def resolved-component]
-                          :as system}]
+(defn start! [_
+              {:keys [client] :as instance}
+              {:keys [->error ->validation]
+               ::ds/keys [component-def resolved-component]
+               :as system}]
   (let [{:keys [conf]} resolved-component
-        {:keys [template]} conf]
-    (or instance
-        (some-> (validate conf system (:schema component-def) template)
-                ->validation)
-        (let [client (aws/client {:api :cloudformation})
-              r (cou-stack! client conf (:json (template-data :template template)))]
-          (if (:cognitect.anomalies/category r)
-            (->error {:message
-                      (str "Error creating stack"
-                           (some->> r aws-error-message (str ": ")))
-                      :response r})
-            {:client client})))))
+        {:keys [template]} conf
+        errors (when-not client
+                 (validate conf system (:schema component-def) template))]
+    (cond
+      client instance
+      errors (->validation errors)
+      :else
+      (let [client (aws/client {:api :cloudformation})
+            r (cou-stack! client conf (:json (template-data :template template)))]
+        (if (:cognitect.anomalies/category r)
+          (->error {:message
+                    (str "Error creating stack"
+                         (some->> r aws-error-message (str ": ")))
+                    :response r})
+          {:client client})))))
+
+(defn stop! [_ instance _]
+  (dissoc instance :client))
 
 (defn stack [& {:as conf}]
   {:conf (assoc conf :comp/name :stack)
-   :start start!
-   :stop (fn [_ _ _])
    :salmon/pre-schema (val/allow-refs stack-schema)
    :salmon/pre-validate
    (fn [conf _ {:keys [->validation] ::ds/keys [component-def] :as system}]
@@ -102,4 +108,6 @@
                        (:template (:conf component-def))
                        :pre? true)
              ->validation))
-   :schema stack-schema})
+   :schema stack-schema
+   :start start!
+   :stop stop!})

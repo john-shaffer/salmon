@@ -87,13 +87,24 @@
      {:CloudFrontOriginAccessIdentityConfig
       {:Comment "Test"}}}}})
 
-(deftest test-deploy
-  (let [system (sig/start! (system-a (stack-a :lint? true
-                                              :template template)))]
-    (testing ":start is idempotent"
-      (let [start (System/nanoTime)]
-        (is (= system (sig/start! system)))
-        (is (> 30 (quot (- (System/nanoTime) start) 1000000)))))))
+(deftest test-start
+  (testing ":start works"
+    (let [system (sig/start! (system-a (stack-a :lint? true
+                                                :template template)))]
+      (is (-> system ::ds/instances :services :stack-a :client))
+      (testing ":start is idempotent"
+        (let [start (System/nanoTime)]
+          (is (= system (sig/start! system)))
+          (is (> 30 (quot (- (System/nanoTime) start) 1000000)))))
+      (testing ":stop works"
+        (let [system (sig/stop! system)]
+          (is (= nil (-> system ::ds/instances :services :stack-a :client)))
+          (testing ":stop is idempotent"
+            (let [start (System/nanoTime)]
+              (is (= system (sig/stop! system)))
+              (is (> 30 (quot (- (System/nanoTime) start) 1000000)))))
+          (testing "system can be restarted after :stop"
+            (is (-> system sig/start! ::ds/instances :services :stack-a :client))))))))
 
 (deftest test-aws-error-messages
   (testing "AWS error messages are included in thrown exceptions"

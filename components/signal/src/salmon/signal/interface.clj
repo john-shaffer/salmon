@@ -27,3 +27,8 @@
   "Calls `(signal! system :start)`."
   [system]
   (signal! system :start))
+
+(defn stop!
+  "Calls `(signal! system :stop)`."
+  [system]
+  (signal! system :stop))
