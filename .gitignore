@@ -5,4 +5,5 @@
 .direnv/
 .nrepl-port
 development/src/dev/
+gcroots
 target/

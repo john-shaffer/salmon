@@ -1,0 +1,63 @@
+name: Test & Snapshot
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  test-and-snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Cache Clojure dependencies
+        uses: actions/cache@v2
+        with:
+          key: clj-salmon-${{ hashFiles('**/deps.edn') }}
+          restore-keys: clj-salmon-
+          path: |
+            ~/.gitlibs
+            ~/.m2/repository
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v17
+
+      - name: Cache Nix store
+        id: nix-cache
+        uses: john-shaffer/cache@sudo-tar
+        with:
+          key: nix-salmon-${{ hashFiles('**.nix') }}
+          restore-keys: |
+            nix-salmon-
+          path: |
+            ~/nix-db-dump
+            /nix/store
+            /nix/var/nix/profiles
+
+      - run: sudo `command -v nix-store` --load-db < ~/nix-db-dump
+        if: steps.nix-cache.outputs.cache-hit == 'true'
+
+      - run: nix-build shell.nix -A inputDerivation -o gcroots
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-region: us-east-1
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          mask-aws-account-id: no
+
+      - name: Run tests and build jar
+        run: nix-shell --run "clojure -T:build ci :snapshot true"
+        
+      - name: Deploy snapshot
+        run: nix-shell --run "clojure -T:build deploy :snapshot true"
+        env:
+          CLOJARS_PASSWORD: ${{secrets.CLOJARS_PASSWORD}}
+          CLOJARS_USERNAME: ${{secrets.CLOJARS_USERNAME}}
+
+      - run: |
+          sudo `command -v nix-collect-garbage` -d
+          nix-store --dump-db > ~/nix-db-dump
+        if: steps.nix-cache.outputs.cache-hit != 'true'
