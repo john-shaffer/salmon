@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <name>salmon</name>
+  <description>A library for building AWS architectures in the REPL, and then deploying them in CI/CD environments.</description>
+  <url>https://github.com/john-shaffer/salmon</url>
+  <licenses>
+    <license>
+      <name>MIT License</name>
+      <url>https://raw.githubusercontent.com/john-shaffer/salmon/master/LICENSE</url>
+    </license>
+  </licenses>
+  <developers>
+    <developer>
+      <name>John Shaffer</name>
+    </developer>
+  </developers>
+  <scm>
+    <url>https://github.com/john-shaffer/salmon</url>
+    <connection>scm:git:git://github.com/john-shaffer/salmon.git</connection>
+    <developerConnection>scm:git:ssh://git@github.com/john-shaffer/salmon.git</developerConnection>
+  </scm>
+</project>

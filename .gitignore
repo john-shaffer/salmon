@@ -4,4 +4,5 @@
 .cpcache/
 .direnv/
 .nrepl-port
-development/src/dev
+development/src/dev/
+target/
