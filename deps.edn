@@ -9,6 +9,9 @@
         poly/signal {:local/root "components/signal"}
         poly/validation {:local/root "components/validation"}}
  :aliases
- {:test {:extra-deps {lambdaisland/kaocha {:git/url "https://github.com/insilica/kaocha.git"
+ {:build {:deps {io.github.seancorfield/build-clj
+                 {:git/tag "v0.8.0" :git/sha "9bd8b8a"}}
+          :ns-default build}
+  :test {:extra-deps {lambdaisland/kaocha {:git/url "https://github.com/insilica/kaocha.git"
                                            :sha "af703e18d12418018339c78e11c43909fa681fe1"}
                       lambdaisland/kaocha-cloverage {:mvn/version "1.0.75"}}}}}
