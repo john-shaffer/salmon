@@ -73,22 +73,22 @@
       (:cognitect.anomalies/category r) r
       :else (update-stack! client request))))
 
-(defn start! [_ _ {:keys [->error ->validation]
-                   ::ds/keys [component-def resolved-component]
-                   :as system}]
-  (let [conf (:conf resolved-component)
-        template (:template conf)
-        errors (validate conf system (:schema component-def) template)]
-    (if errors
-      (->validation errors)
-      (let [client (aws/client {:api :cloudformation})
-            r (cou-stack! client conf (:json (template-data :template template)))]
-        (if (:cognitect.anomalies/category r)
-          (->error {:message
-                    (str "Error creating stack"
-                         (some->> r aws-error-message (str ": ")))
-                    :response r})
-          {:client client})))))
+(defn start! [_ instance {:keys [->error ->validation]
+                          ::ds/keys [component-def resolved-component]
+                          :as system}]
+  (let [{:keys [conf]} resolved-component
+        {:keys [template]} conf]
+    (or instance
+        (some-> (validate conf system (:schema component-def) template)
+                ->validation)
+        (let [client (aws/client {:api :cloudformation})
+              r (cou-stack! client conf (:json (template-data :template template)))]
+          (if (:cognitect.anomalies/category r)
+            (->error {:message
+                      (str "Error creating stack"
+                           (some->> r aws-error-message (str ": ")))
+                      :response r})
+            {:client client})))))
 
 (defn stack [& {:as conf}]
   {:conf (assoc conf :comp/name :stack)

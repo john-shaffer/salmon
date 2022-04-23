@@ -88,8 +88,12 @@
       {:Comment "Test"}}}}})
 
 (deftest test-deploy
-  (sig/start! (system-a (stack-a :lint? true
-                                 :template template))))
+  (let [system (sig/start! (system-a (stack-a :lint? true
+                                              :template template)))]
+    (testing ":start is idempotent"
+      (let [start (System/nanoTime)]
+        (is (= system (sig/start! system)))
+        (is (> 30 (quot (- (System/nanoTime) start) 1000000)))))))
 
 (deftest test-aws-error-messages
   (testing "AWS error messages are included in thrown exceptions"
