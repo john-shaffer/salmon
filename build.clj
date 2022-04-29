@@ -3,7 +3,7 @@
   (:require [clojure.tools.build.api :as b]
             [org.corfield.build :as bb]))
 
-(def lib 'org.clojars.john-shaffer/salmon)
+(def lib 'rs.shaffe/salmon)
 (def version "0.2.0")
 (defn get-version [opts]
   (str version (when (:snapshot opts) "-SNAPSHOT")))
