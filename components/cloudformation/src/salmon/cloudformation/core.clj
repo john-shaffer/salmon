@@ -2,6 +2,7 @@
   (:require [babashka.fs :as fs]
             [clojure.data.json :as json]
             [clojure.java.shell :as sh]
+            [clojure.string :as str]
             [cognitect.aws.client.api :as aws]
             [donut.system :as ds]
             [malli.core :as m]
@@ -53,7 +54,34 @@
 (defn aws-error-message [response]
   (some-> response :ErrorResponse :Error :Message))
 
-(declare update-stack!)
+(defn response-error [message response]
+  {:message (str message
+                 (some->> response aws-error-message (str ": ")))
+   :response response})
+
+(defn wait-until-ready! [{:keys [->error]
+                          ::ds/keys [resolved-component]
+                          :as system}
+                         client]
+  (let [name (-> resolved-component :conf :name)
+        r (aws/invoke client {:op :DescribeStacks
+                              :request {:StackName name}})
+        status (-> r :Stacks first :StackStatus)]
+    (cond
+      (anomaly? r)
+      (->error (response-error "Error getting stack status" r))
+
+      (str/ends-with? status "_FAILED")
+      (->error {:message (str "Stack " name " is in failed state: " status)
+                :name name
+                :status status})
+      
+      (str/ends-with? status "_COMPLETE") true
+      
+      :else
+      (do
+        (Thread/sleep 5000)
+        (wait-until-ready! system client)))))
 
 (defn create-stack! [client request]
   (aws/invoke client {:op :CreateStack :request request}))
@@ -92,11 +120,9 @@
       (let [client (aws/client {:api :cloudformation})
             r (cou-stack! client conf (:json (template-data :template template)))]
         (if (anomaly? r)
-          (->error {:message
-                    (str "Error creating stack"
-                         (some->> r aws-error-message (str ": ")))
-                    :response r})
-          {:client client})))))
+          (->error (response-error "Error creating stack" r))
+          (when (wait-until-ready! system client)
+            {:client client}))))))
 
 (defn stop! [_ instance _]
   (dissoc instance :client))
