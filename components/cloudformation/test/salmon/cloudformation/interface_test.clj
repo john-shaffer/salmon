@@ -1,6 +1,7 @@
 (ns salmon.cloudformation.interface-test
   (:require [clojure.test :refer [deftest is testing]]
             [donut.system :as ds]
+            [malli.generator :as mg]
             [salmon.cloudformation.interface :as cfn]
             [salmon.signal.interface :as sig])
   (:import (clojure.lang ExceptionInfo)))
@@ -21,7 +22,7 @@
     :validate {:order :reverse-topsort}}})
 
 (defn stack-a [& {:as opts}]
-  (-> {:name "stack-a"}
+  (-> {:name (mg/generate [:re cfn/re-stack-name])}
       (merge opts)
       cfn/stack))
 

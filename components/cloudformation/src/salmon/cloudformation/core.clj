@@ -8,6 +8,8 @@
             [malli.core :as m]
             [salmon.validation.interface :as val]))
 
+(def re-stack-name #"^[a-zA-Z][-a-zA-Z0-9]{0,127}$")
+
 (defn cfn-lint! [template]
   (fs/with-temp-dir [dir {:prefix (str "salmon-cloudformation")}]
     (let [f (fs/create-file (fs/path dir "cloudformation.template"))]
@@ -32,7 +34,7 @@
    [:name
     [:and
      [:string {:min 1 :max 128}]
-     [:re #"^[a-zA-Z][-a-zA-Z0-9]*$"]]]])
+     [:re re-stack-name]]]])
 
 (defn validate [{:keys [lint?] :as conf} system schema template & {:keys [pre?]}]
   (if-let [errors (and schema (m/explain schema conf))]
