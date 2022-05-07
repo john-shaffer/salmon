@@ -61,7 +61,7 @@
                  (some->> response aws-error-message (str ": ")))
    :response response})
 
-(defn wait-until-ready! [{:keys [->error]
+(defn wait-until-complete! [{:keys [->error]
                           ::ds/keys [resolved-component]
                           :as system}
                          client]
@@ -83,7 +83,7 @@
       :else
       (do
         (Thread/sleep 5000)
-        (wait-until-ready! system client)))))
+        (wait-until-complete! system client)))))
 
 (defn create-stack! [client request]
   (aws/invoke client {:op :CreateStack :request request}))
@@ -123,14 +123,30 @@
             r (cou-stack! client conf (:json (template-data :template template)))]
         (if (anomaly? r)
           (->error (response-error "Error creating stack" r))
-          (when (wait-until-ready! system client)
+          (when (wait-until-complete! system client)
             {:client client}))))))
 
 (defn stop! [_ instance _]
   (dissoc instance :client))
 
+(defn delete!
+  [conf
+   {:keys [client] :as instance}
+   {:keys [->error] :as system}]
+  (if-not client
+    instance
+    (let [name (:name conf)
+          r (aws/invoke client {:op :DeleteStack
+                                :request {:StackName name}})]
+      (if (anomaly? r)
+        (->error (response-error "Error deleting stack" r))
+        (do
+          (wait-until-complete! system client)
+          (stop! conf instance system))))))
+
 (defn stack [& {:as conf}]
   {:conf (assoc conf :comp/name :stack)
+   :delete delete!
    :salmon/pre-schema (val/allow-refs stack-schema)
    :pre-validate
    (fn [conf _ {:keys [->validation] ::ds/keys [component-def] :as system}]
