@@ -44,6 +44,9 @@
               (when (seq message)
                 {:message message})))))
 
+(defn anomaly? [response]
+  (boolean (:cognitect.anomalies/category response)))
+
 (defn aws-error-code [response]
   (some-> response :ErrorResponse :Error :Code))
 
@@ -70,7 +73,7 @@
                               :request {:StackName name}})]
     (cond
       (= "ValidationError" (aws-error-code r)) (create-stack! client request)
-      (:cognitect.anomalies/category r) r
+      (anomaly? r) r
       :else (update-stack! client request))))
 
 (defn start! [_
@@ -88,7 +91,7 @@
       :else
       (let [client (aws/client {:api :cloudformation})
             r (cou-stack! client conf (:json (template-data :template template)))]
-        (if (:cognitect.anomalies/category r)
+        (if (anomaly? r)
           (->error {:message
                     (str "Error creating stack"
                          (some->> r aws-error-message (str ": ")))
