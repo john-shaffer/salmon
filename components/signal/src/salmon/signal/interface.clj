@@ -4,16 +4,16 @@
 (declare signal!)
 
 (defn pre-validate-conf
-  "Handles :salmon/pre-validate signal by validating `conf` against the schema
+  "Handles :pre-validate signal by validating `conf` against the schema
   in the `:salmon/pre-schema` entry of the component definition. Does nothing if
   there is no such entry."
   [conf instance system]
   (core/pre-validate-conf conf instance system))
 
 (defn pre-validate!
-  "Calls `(signal! system :salmon/pre-validate)`."
+  "Calls `(signal! system :pre-validate)`."
   [system]
-  (signal! system :salmon/pre-validate))
+  (signal! system :pre-validate))
 
 (defn signal!
   "Sends the signal to the system. Throws a

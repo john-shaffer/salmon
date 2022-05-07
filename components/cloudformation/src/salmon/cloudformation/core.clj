@@ -132,7 +132,7 @@
 (defn stack [& {:as conf}]
   {:conf (assoc conf :comp/name :stack)
    :salmon/pre-schema (val/allow-refs stack-schema)
-   :salmon/pre-validate
+   :pre-validate
    (fn [conf _ {:keys [->validation] ::ds/keys [component-def] :as system}]
      (some-> (validate conf system
                        (:salmon/pre-schema component-def)
