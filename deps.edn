@@ -1,6 +1,6 @@
 {:paths [""]
  :deps {org.clojure/clojure {:mvn/version "1.11.1"}
-        babashka/fs {:mvn/version "0.1.4"}
+        babashka/fs {:mvn/version "0.1.6"}
         hashp/hashp {:mvn/version "0.2.1"}
 
         poly/aws-api {:local/root "components/aws-api"}
@@ -13,5 +13,5 @@
                  {:git/tag "v0.8.0" :git/sha "9bd8b8a"}}
           :ns-default build}
   :test {:extra-deps {lambdaisland/kaocha {:git/url "https://github.com/insilica/kaocha.git"
-                                           :sha "af703e18d12418018339c78e11c43909fa681fe1"}
+                                           :sha "811d37448e10b52e78dd2ef6ba95535e59f6bbda"}
                       lambdaisland/kaocha-cloverage {:mvn/version "1.0.75"}}}}}

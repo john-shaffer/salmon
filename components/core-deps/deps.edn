@@ -1,4 +1,4 @@
 {:deps {org.clojure/data.json {:mvn/version "2.4.0"}
-        club.donutpower/system {:sha "5f09466d80a6e403c38c2472124dfaa8f660203c"
+        club.donutpower/system {:sha "96cc6036e245c248a83bd24c877ab1adc7c50515"
                                 :git/url "https://github.com/donut-power/system.git"}
         medley/medley {:mvn/version "1.4.0"}}}
