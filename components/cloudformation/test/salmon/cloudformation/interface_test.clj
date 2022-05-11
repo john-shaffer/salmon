@@ -118,7 +118,8 @@
             (is (> 30 (quot (- (System/nanoTime) start) 1000000)))))
         (testing "system can be restarted after :delete"
           (reset! system (sig/start! @system))
-          (is (-> @system ::ds/instances :services :stack-a :client)))))))
+          (is (-> @system ::ds/instances :services :stack-a :client)))
+        (sig/delete! @system)))))
 
 (deftest test-aws-error-messages
   (testing "AWS error messages are included in thrown exceptions"
