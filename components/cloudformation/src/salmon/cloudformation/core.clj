@@ -83,7 +83,7 @@
       :else
       (do
         (Thread/sleep 5000)
-        (wait-until-complete! system client)))))
+        (recur system client)))))
 
 (defn create-stack! [client request]
   (aws/invoke client {:op :CreateStack :request request}))
