@@ -1,9 +1,10 @@
-{:paths [""]
+{:paths ["src"]
  :deps {org.clojure/clojure {:mvn/version "1.11.1"}
         babashka/fs {:mvn/version "0.1.6"}
         hashp/hashp {:mvn/version "0.2.1"}
 
         poly/aws-api {:local/root "components/aws-api"}
+        poly/cleanup {:local/root "components/cleanup"}
         poly/cloudformation {:local/root "components/cloudformation"}
         poly/core-deps {:local/root "components/core-deps"}
         poly/signal {:local/root "components/signal"}
