@@ -1,5 +1,0 @@
-{:paths ["src"]
- :deps {com.cognitect.aws/cloudformation {:mvn/version "821.2.1107.0"}
-
-        poly/aws-api {:local/root "../aws-api"}
-        poly/core-deps {:local/root "../core-deps"}}}

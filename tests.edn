@@ -3,5 +3,5 @@
   :parallel true
   :parallel-threads 4
   :plugins [:kaocha.plugin/print-invocations]
-  :tests [{:source-paths ["components/cloudformation/src"]
-           :test-paths ["components/cloudformation/test"]}]}
+  :tests [{:source-paths ["src"]
+           :test-paths ["test"]}]}

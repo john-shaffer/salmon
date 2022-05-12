@@ -1,14 +1,14 @@
 {:paths ["src"]
  :deps {org.clojure/clojure {:mvn/version "1.11.1"}
         babashka/fs {:mvn/version "0.1.6"}
+        club.donutpower/system {:sha "96cc6036e245c248a83bd24c877ab1adc7c50515"
+                                :git/url "https://github.com/donut-power/system.git"}
+        com.cognitect.aws/api {:mvn/version "0.8.539"}
+        com.cognitect.aws/cloudformation {:mvn/version "821.2.1107.0"}
+        com.cognitect.aws/endpoints {:mvn/version "1.1.12.206"}
         hashp/hashp {:mvn/version "0.2.1"}
-
-        poly/aws-api {:local/root "components/aws-api"}
-        poly/cleanup {:local/root "components/cleanup"}
-        poly/cloudformation {:local/root "components/cloudformation"}
-        poly/core-deps {:local/root "components/core-deps"}
-        poly/signal {:local/root "components/signal"}
-        poly/validation {:local/root "components/validation"}}
+        medley/medley {:mvn/version "1.4.0"}
+        org.clojure/data.json {:mvn/version "2.4.0"}}
  :aliases
  {:build {:deps {io.github.seancorfield/build-clj
                  {:git/tag "v0.8.0" :git/sha "9bd8b8a"}}
@@ -16,4 +16,5 @@
   :test {:extra-deps {com.gfredericks/test.chuck {:mvn/version "0.2.13"}
                       lambdaisland/kaocha {:git/url "https://github.com/insilica/kaocha.git"
                                            :sha "811d37448e10b52e78dd2ef6ba95535e59f6bbda"}
-                      lambdaisland/kaocha-cloverage {:mvn/version "1.0.75"}}}}}
+                      lambdaisland/kaocha-cloverage {:mvn/version "1.0.75"}}
+         :extra-paths ["test"]}}}
