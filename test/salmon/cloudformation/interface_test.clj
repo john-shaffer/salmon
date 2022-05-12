@@ -22,8 +22,11 @@
     :pre-validate {:order :reverse-topsort}
     :validate {:order :reverse-topsort}}})
 
+(defn rand-stack-name []
+  (mg/generate [:re cfn/re-stack-name]))
+
 (defn stack-a [& {:as opts}]
-  (-> {:name (mg/generate [:re cfn/re-stack-name])}
+  (-> {:name (rand-stack-name)}
       (merge opts)
       cfn/stack))
 
@@ -80,20 +83,25 @@
          #"Validation failed during :start: E1001 Top level template section a is not valid"
          (sig/start! (system-a (stack-a :lint? true :template {:a (ds/ref :empty)})))))))
 
-(def template
+(defn oai [comment]
+  {:Type "AWS::CloudFront::CloudFrontOriginAccessIdentity"
+   :Properties
+   {:CloudFrontOriginAccessIdentityConfig
+    {:Comment comment}}})
+
+(def template-a
   {:AWSTemplateFormatVersion "2010-09-09"
    :Resources
-   {:OAI
-    {:Type "AWS::CloudFront::CloudFrontOriginAccessIdentity"
-     :Properties
-     {:CloudFrontOriginAccessIdentityConfig
-      {:Comment "Test"}}}}})
+   {:OAI1 (oai "OAI1")}})
+
+(def template-b
+  (assoc-in template-a [:Resources :OAI2] (oai "OAI2")))
 
 (deftest test-lifecycle
   (let [system (atom nil)]
     (testing ":start works"
       (reset! system (sig/start! (system-a (stack-a :lint? true
-                                                    :template template))))
+                                                    :template template-a))))
       (is (-> @system ::ds/instances :services :stack-a :client))
       (testing ":start is idempotent"
         (let [start (System/nanoTime)]
@@ -120,6 +128,14 @@
           (reset! system (sig/start! @system))
           (is (-> @system ::ds/instances :services :stack-a :client)))
         (sig/delete! @system)))))
+
+(deftest test-resources
+  (let [sys (sig/start! (system-a (stack-a :template template-b)))]
+    (is (= #{"OAI1" "OAI2"}
+           (->> sys ::ds/instances :services :stack-a :resources
+                (map :LogicalResourceId) set))
+        "Resources are retrieved and attached to the stack instance")
+    (sig/delete! sys)))
 
 (deftest test-aws-error-messages
   (testing "AWS error messages are included in thrown exceptions"

@@ -86,13 +86,19 @@
         (recur system client)))))
 
 (defn create-stack! [client request]
-  (aws/invoke client {:op :CreateStack :request request}))
+  (let [r (aws/invoke client {:op :CreateStack :request request})]
+    (if (anomaly? r)
+      r
+      (:StackId r))))
 
 (defn update-stack! [client request]
-  (let [r (aws/invoke client {:op :UpdateStack :request request})]
-    (when-not (and (= "ValidationError" (aws-error-code r))
-                   (= "No updates are to be performed." (aws-error-message r)))
-      r)))
+  (let [r (aws/invoke client {:op :UpdateStack :request request})
+        msg (aws-error-message r)]
+    (cond
+      (not= "ValidationError" (aws-error-code r)) r
+      (= "No updates are to be performed." msg) nil
+      (anomaly? r) r
+      :else (:StackId r))))
 
 (defn cou-stack!
   "Create a new stack or update an existing one with the same name."
@@ -105,6 +111,33 @@
       (= "ValidationError" (aws-error-code r)) (create-stack! client request)
       (anomaly? r) r
       :else (update-stack! client request))))
+
+(defn get-all-pages [client op-map]
+  (loop [responses []
+         next-token nil]
+    (let [op-map (if next-token
+                   (assoc-in op-map [:request :NextToken] next-token)
+                   op-map)
+          {:keys [NextToken] :as r} (aws/invoke client op-map)]
+      (cond
+        (anomaly? r) r
+        NextToken (recur (conj responses r) NextToken)
+        :else (conj responses r)))))
+
+(defn get-resources [client stack-name-or-id]
+  (let [r (get-all-pages client {:op :ListStackResources
+                                 :request {:StackName stack-name-or-id}})]
+    (if (anomaly? r)
+      r
+      (mapcat :StackResourceSummaries r))))
+
+(defn stack-instance [{:keys [->error]} client stack-id]
+  (let [resources (get-resources client stack-id)]
+    (if (anomaly? resources)
+      (->error (response-error "Error getting resources" resources))
+      {:client client
+       :resources resources
+       :stack-id stack-id})))
 
 (defn start! [_
               {:keys [client] :as instance}
@@ -124,7 +157,7 @@
         (if (anomaly? r)
           (->error (response-error "Error creating stack" r))
           (when (wait-until-complete! system client)
-            {:client client}))))))
+            (stack-instance system client r)))))))
 
 (defn stop! [_ instance _]
   (dissoc instance :client))
