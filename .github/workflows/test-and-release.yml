@@ -1,4 +1,4 @@
-name: Test & Snapshot
+name: Test & Release
 
 on:
   push:
@@ -51,7 +51,7 @@ jobs:
       - name: Run tests and build jar
         run: nix-shell --run "clojure -T:build ci :snapshot false"
         
-      - name: Deploy snapshot
+      - name: Deploy release jar
         run: nix-shell --run "clojure -T:build deploy :snapshot false"
         env:
           CLOJARS_PASSWORD: ${{secrets.CLOJARS_PASSWORD}}
