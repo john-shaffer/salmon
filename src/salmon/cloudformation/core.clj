@@ -91,13 +91,13 @@
       r
       (:StackId r))))
 
-(defn update-stack! [client request describe-response]
-  (let [r (aws/invoke client {:op :UpdateStack :request request})
+(defn update-stack! [client request stack-id]
+  (let [request (assoc request :StackName stack-id)
+        r (aws/invoke client {:op :UpdateStack :request request})
         msg (aws-error-message r)]
     (cond
       (not= "ValidationError" (aws-error-code r)) r
-      (= "No updates are to be performed." msg)
-      #__ (-> describe-response :Stacks first :StackId)
+      (= "No updates are to be performed." msg) stack-id
       (anomaly? r) r
       :else (:StackId r))))
 
@@ -107,11 +107,12 @@
   (let [request {:StackName name
                  :TemplateBody template-json}
         r (aws/invoke client {:op :DescribeStacks
-                              :request {:StackName name}})]
+                              :request {:StackName name}})
+        stack-id (some-> r :Stacks first :StackId)]
     (cond
       (= "ValidationError" (aws-error-code r)) (create-stack! client request)
       (anomaly? r) r
-      :else (update-stack! client request r))))
+      :else (update-stack! client request stack-id))))
 
 (defn get-all-pages [client op-map]
   (loop [responses []
