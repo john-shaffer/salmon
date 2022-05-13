@@ -91,12 +91,19 @@
       r
       (:StackId r))))
 
+(defn get-stack-id [client stack-name]
+  (let [r (aws/invoke client {:op :DescribeStacks
+                              :request {:StackName stack-name}})]
+    (if (anomaly? r)
+      r
+      (-> r :Stacks first :StackId))))
+
 (defn update-stack! [client request]
   (let [r (aws/invoke client {:op :UpdateStack :request request})
         msg (aws-error-message r)]
     (cond
       (not= "ValidationError" (aws-error-code r)) r
-      (= "No updates are to be performed." msg) nil
+      (= "No updates are to be performed." msg) (get-stack-id client (:StackName request))
       (anomaly? r) r
       :else (:StackId r))))
 

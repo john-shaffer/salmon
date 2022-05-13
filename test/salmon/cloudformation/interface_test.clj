@@ -129,6 +129,17 @@
           (is (-> @system ::ds/instances :services :stack-a :client)))
         (sig/delete! @system)))))
 
+(deftest test-no-change-start
+  (testing "If no changes are to be made to the template, start succeeds"
+    (let [sys (system-a (stack-a :template template-a))
+          _ (sig/start! sys)
+          sys (sig/start! sys)]
+      (is (= ["OAI1"]
+             (->> sys ::ds/instances :services :stack-a :resources
+                  (map :LogicalResourceId)))
+          "Resources are correct")
+      (sig/delete! sys))))
+
 (deftest test-resources
   (let [sys (sig/start! (system-a (stack-a :template template-b)))]
     (is (= #{"OAI1" "OAI2"}
