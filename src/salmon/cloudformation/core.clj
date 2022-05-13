@@ -62,9 +62,9 @@
    :response response})
 
 (defn wait-until-complete! [{:keys [->error]
-                          ::ds/keys [resolved-component]
-                          :as system}
-                         client]
+                             ::ds/keys [resolved-component]
+                             :as system}
+                            client]
   (let [name (-> resolved-component :conf :name)
         r (aws/invoke client {:op :DescribeStacks
                               :request {:StackName name}})
@@ -77,9 +77,9 @@
       (->error {:message (str "Stack " name " is in failed state: " status)
                 :name name
                 :status status})
-      
+
       (str/ends-with? status "_COMPLETE") true
-      
+
       :else
       (do
         (Thread/sleep 5000)
@@ -126,6 +126,20 @@
         NextToken (recur (conj responses r) NextToken)
         :else (conj responses r)))))
 
+(defn outputs-map [outputs-seq]
+  (reduce
+   (fn [m {:keys [OutputKey] :as output}]
+     (assoc m OutputKey (dissoc output :OutputKey)))
+   {}
+   outputs-seq))
+
+(defn get-outputs [client stack-name-or-id]
+  (let [r (aws/invoke client {:op :DescribeStacks
+                              :request {:StackName stack-name-or-id}})]
+    (if (anomaly? r)
+      r
+      (-> r :Stacks first :Outputs outputs-map))))
+
 (defn get-resources [client stack-name-or-id]
   (let [r (get-all-pages client {:op :ListStackResources
                                  :request {:StackName stack-name-or-id}})]
@@ -134,10 +148,19 @@
       (mapcat :StackResourceSummaries r))))
 
 (defn stack-instance [{:keys [->error]} client stack-id]
-  (let [resources (get-resources client stack-id)]
-    (if (anomaly? resources)
+  (let [resources (get-resources client stack-id)
+        outputs (when-not (anomaly? resources)
+                  (get-outputs client stack-id))]
+    (cond
+      (anomaly? resources)
       (->error (response-error "Error getting resources" resources))
+
+      (anomaly? outputs)
+      (->error (response-error "Error getting outputs" outputs))
+
+      :else
       {:client client
+       :outputs outputs
        :resources resources
        :stack-id stack-id})))
 

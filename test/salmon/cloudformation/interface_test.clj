@@ -140,6 +140,19 @@
           "Resources are correct")
       (sig/delete! sys))))
 
+(deftest test-outputs
+  (let [template (assoc template-a :Outputs
+                        {"OUT1" {:Value "1" :Export {:Name "OUT1"}
+                                 :Description "OUT1 desc"}
+                         "OUT2" {:Value "2" :Export {:Name "OUT2"}}})
+        sys (sig/start! (system-a (stack-a :template template)))]
+    (is (= {"OUT1" {:OutputValue "1" :ExportName "OUT1"
+                    :Description "OUT1 desc"}
+            "OUT2" {:OutputValue "2" :ExportName "OUT2"}}
+           (->> sys ::ds/instances :services :stack-a :outputs))
+        "Outputs are retrieved and attached to the stack instance")
+    (sig/delete! sys)))
+
 (deftest test-resources
   (let [sys (sig/start! (system-a (stack-a :template template-b)))]
     (is (= #{"OAI1" "OAI2"}
