@@ -131,13 +131,18 @@
 
 (deftest test-no-change-start
   (testing "If no changes are to be made to the template, start succeeds"
-    (let [sys (system-a (stack-a :template template-a))
+    (let [template (assoc template-a :Outputs
+                          {"OUT1" {:Value "1" :Export {:Name "OUT1"}}})
+          sys (system-a (stack-a :template template))
           _ (sig/start! sys)
           sys (sig/start! sys)]
       (is (= ["OAI1"]
              (->> sys ::ds/instances :services :stack-a :resources
                   (map :LogicalResourceId)))
           "Resources are correct")
+      (is (= {"OUT1" {:OutputValue "1" :ExportName "OUT1"}}
+             (->> sys ::ds/instances :services :stack-a :outputs))
+          "Outputs are correct")
       (sig/delete! sys))))
 
 (deftest test-outputs
