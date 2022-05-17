@@ -6,6 +6,7 @@
             [cognitect.aws.client.api :as aws]
             [donut.system :as ds]
             [malli.core :as m]
+            [medley.core :as me]
             [salmon.validation.interface :as val]))
 
 (defn full-name ^String [x]
@@ -147,19 +148,19 @@
         NextToken (recur (conj responses r) NextToken)
         :else (conj responses r)))))
 
-(defn outputs-map [outputs-seq]
+(defn outputs-map-raw [outputs-seq]
   (reduce
    (fn [m {:keys [OutputKey] :as output}]
-     (assoc m OutputKey (dissoc output :OutputKey)))
+     (assoc m (keyword OutputKey) (dissoc output :OutputKey)))
    {}
    outputs-seq))
 
-(defn get-outputs [client stack-name-or-id]
+(defn get-outputs-raw [client stack-name-or-id]
   (let [r (aws/invoke client {:op :DescribeStacks
                               :request {:StackName stack-name-or-id}})]
     (if (anomaly? r)
       r
-      (-> r :Stacks first :Outputs outputs-map))))
+      (-> r :Stacks first :Outputs outputs-map-raw))))
 
 (defn get-resources [client stack-name-or-id]
   (let [r (get-all-pages client {:op :ListStackResources
@@ -170,18 +171,19 @@
 
 (defn stack-instance [{:keys [->error]} client stack-id]
   (let [resources (get-resources client stack-id)
-        outputs (when-not (anomaly? resources)
-                  (get-outputs client stack-id))]
+        outputs-raw (when-not (anomaly? resources)
+                  (get-outputs-raw client stack-id))]
     (cond
       (anomaly? resources)
       (->error (response-error "Error getting resources" resources))
 
-      (anomaly? outputs)
-      (->error (response-error "Error getting outputs" outputs))
+      (anomaly? outputs-raw)
+      (->error (response-error "Error getting outputs" outputs-raw))
 
       :else
       {:client client
-       :outputs outputs
+       :outputs (me/map-vals :OutputValue outputs-raw)
+       :outputs-raw outputs-raw
        :resources resources
        :stack-id stack-id})))
 
