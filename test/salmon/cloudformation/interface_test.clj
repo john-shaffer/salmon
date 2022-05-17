@@ -7,20 +7,20 @@
   (:import (clojure.lang ExceptionInfo)))
 
 (defn system-a [stack]
-  {::ds/base {:pre-validate sig/pre-validate-conf}
+  {::ds/base {:salmon/pre-validate sig/pre-validate-conf}
    ::ds/defs
-   {:services {:comp {:conf {:name :conf}
-                      :start (fn [_ _ _] {:started? true})
-                      :stop (fn [_ _ _])}
-               :empty {:start (fn [_ _ _] {})}
-               :T {:start (fn [_ _ _] :T)}
-               :x :X
-               :y "Y!"
+   {:services {:comp {::ds/config {:name :conf}
+                      ::ds/start (constantly {:started? true})
+                      ::ds/stop (fn [_])}
+               :empty {::ds/start (constantly {})}
+               :T {::ds/start (constantly :T)}
+               :x {::ds/start :X}
+               :y {::ds/start "Y!"}
                :stack-a stack}}
    ::ds/signals
-   {:delete {:order :topsort}
-    :pre-validate {:order :reverse-topsort}
-    :validate {:order :reverse-topsort}}})
+   {:salmon/delete {:order :topsort}
+    :salmon/pre-validate {:order :reverse-topsort}
+    ::ds/validate {:order :reverse-topsort}}})
 
 (defn rand-stack-name []
   (mg/generate [:re cfn/re-stack-name]))
@@ -34,53 +34,53 @@
   (testing "Blank templates should fail validation"
     (is (thrown-with-msg?
          ExceptionInfo
-         #"Validation failed during :pre-validate: Template must be a map"
+         #"Validation failed during :salmon/pre-validate: Template must be a map"
          (sig/pre-validate! (system-a (stack-a)))))
     (is (thrown-with-msg?
          ExceptionInfo
-         #"Validation failed during :pre-validate: Template must be a map"
+         #"Validation failed during :salmon/pre-validate: Template must be a map"
          (sig/pre-validate! (system-a (stack-a :template "")))))
     (is (thrown-with-msg?
          ExceptionInfo
-         #"Validation failed during :pre-validate: Template must be a map"
+         #"Validation failed during :salmon/pre-validate: Template must be a map"
          (sig/pre-validate! (system-a (stack-a :template 1)))))
     (is (thrown-with-msg?
          ExceptionInfo
-         #"Validation failed during :pre-validate: Template must not be empty"
+         #"Validation failed during :salmon/pre-validate: Template must not be empty"
          (sig/pre-validate! (system-a (stack-a :template {})))))))
 
 (deftest test-pre-validation-linting
-  (testing "cfn-lint doesn't run unless :lint? is true"
-    (is (sig/pre-validate! (system-a (stack-a :template {:a 1})))))
   (testing "cfn-lint works in :pre-validate when there are no refs in the template"
     (is (thrown-with-msg?
          ExceptionInfo
-         #"Validation failed during :pre-validate: E1001 Top level template section a is not valid"
+         #"Validation failed during :salmon/pre-validate: E1001 Top level template section a is not valid"
          (sig/pre-validate! (system-a (stack-a :lint? true :template {:a 1}))))))
+  (testing "cfn-lint doesn't run unless :lint? is true"
+    (is (sig/pre-validate! (system-a (stack-a :template {:a 1})))))
   (testing "cfn-lint works in :pre-validate when all refs have been resolved"
     (is (thrown-with-msg?
          ExceptionInfo
-         #"Validation failed during :pre-validate: E1001 Top level template section a is not valid"
-         (sig/pre-validate! (system-a (stack-a :lint? true :template {:a (ds/ref :y)}))))))
+         #"Validation failed during :salmon/pre-validate: E1001 Top level template section a is not valid"
+         (sig/pre-validate! (system-a (stack-a :lint? true :template {:a (ds/ref [:services :y])}))))))
   (testing "Pre-validation linting doesn't run for a ref to an un-started services"
-    (is (sig/pre-validate! (system-a (stack-a :lint? true :template (ds/ref :T))))))
+    (is (sig/pre-validate! (system-a (stack-a :lint? true :template (ds/ref [:services :T]))))))
   (testing "Pre-validation linting doesn't run if the template has a nested ref to an un-started service"
-    (is (sig/pre-validate! (system-a (stack-a :lint? true :template {:a (ds/ref :T)}))))))
+    (is (sig/pre-validate! (system-a (stack-a :lint? true :template {:a (ds/ref [:services :T])}))))))
 
 (deftest test-validation-linting
   (testing "ref templates are validated during :start"
     (is (thrown-with-msg?
          ExceptionInfo
-         #"Validation failed during :start: Template must not be empty"
+         #"Validation failed during :donut.system/start: Template must not be empty"
          (sig/start! (system-a (stack-a :lint? true :template (ds/ref :empty))))))
     (is (thrown-with-msg?
          ExceptionInfo
-         #"Validation failed during :start: Template must be a map"
+         #"Validation failed during :donut.system/start: Template must be a map"
          (sig/start! (system-a (stack-a :lint? true :template (ds/ref :T)))))))
   (testing "Templates with deep refs are validated during :start"
     (is (thrown-with-msg?
          ExceptionInfo
-         #"Validation failed during :start: E1001 Top level template section a is not valid"
+         #"Validation failed during :donut.system/start: E1001 Top level template section a is not valid"
          (sig/start! (system-a (stack-a :lint? true :template {:a (ds/ref :empty)})))))))
 
 (defn iam-user [name]
@@ -123,8 +123,10 @@
           (reset! system (sig/start! @system))
           (is (-> @system ::ds/instances :services :stack-a :client))))
       (testing ":delete works"
-        (reset! system (sig/delete! @system))
-        (is (= nil (-> @system ::ds/instances :services :stack-a :client)))
+        (let [stack-id (-> @system ::ds/instances :services :stack-a :stack-id)]
+          (reset! system (sig/delete! @system))
+          (is (= {:stack-id stack-id}
+                 (-> @system ::ds/instances :services :stack-a))))
         (testing ":delete is idempotent"
           (let [start (System/nanoTime)]
             (is (= @system (sig/delete! @system)))

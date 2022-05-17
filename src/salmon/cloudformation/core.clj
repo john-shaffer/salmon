@@ -49,14 +49,15 @@
      [:string {:min 1 :max 128}]
      [:re re-stack-name]]]])
 
-(defn validate [{:keys [lint?] :as conf} system schema template & {:keys [pre?]}]
-  (if-let [errors (and schema (m/explain schema conf))]
-    errors
+(defn validate [{:keys [lint? ::ds/system] :as config} schema template & {:keys [pre?]}]
+  (let [errors (and schema (m/explain schema config))
+        resolved-template (val/resolve-refs system template)]
     (cond
+      errors errors
       (and pre? (not (val/refs-resolveable? system template))) nil
-      (not (map? template)) {:message "Template must be a map."}
-      (empty? template) {:message "Template must not be empty."}
-      lint? (let [{:keys [message]} (template-data :template template)]
+      (not (map? resolved-template)) {:message "Template must be a map."}
+      (empty? resolved-template) {:message "Template must not be empty."}
+      lint? (let [{:keys [message]} (template-data :template resolved-template)]
               (when (seq message)
                 {:message message})))))
 
@@ -81,12 +82,9 @@
       :ParameterValue v})
    parameters))
 
-(defn wait-until-complete! [{:keys [->error]
-                             ::ds/keys [resolved-component]
-                             :as system}
-                            client]
-  (let [name (-> resolved-component :conf :name)
-        r (aws/invoke client {:op :DescribeStacks
+(defn wait-until-complete!
+  [{:keys [->error name] :as signal} client]
+  (let [r (aws/invoke client {:op :DescribeStacks
                               :request {:StackName name}})
         status (-> r :Stacks first :StackStatus)]
     (cond
@@ -103,7 +101,7 @@
       :else
       (do
         (Thread/sleep 5000)
-        (recur system client)))))
+        (recur signal client)))))
 
 (defn create-stack! [client request]
   (let [r (aws/invoke client {:op :CreateStack :request request})]
@@ -171,7 +169,7 @@
 (defn stack-instance [{:keys [->error]} client stack-id]
   (let [resources (get-resources client stack-id)
         outputs-raw (when-not (anomaly? resources)
-                  (get-outputs-raw client stack-id))]
+                      (get-outputs-raw client stack-id))]
     (cond
       (anomaly? resources)
       (->error (response-error "Error getting resources" resources))
@@ -186,55 +184,54 @@
        :resources resources
        :stack-id stack-id})))
 
-(defn start! [_
-              {:keys [client] :as instance}
-              {:keys [->error ->validation]
-               ::ds/keys [component-def resolved-component]
-               :as system}]
-  (let [{:keys [conf]} resolved-component
-        {:keys [template]} conf
+(defn start! [{:keys [->error ->validation template]
+               ::ds/keys [instance system]
+               :as signal}]
+  (let [{:keys [client]} instance
+        schema (-> system ::ds/component-def :schema)
         errors (when-not client
-                 (validate conf system (:schema component-def) template))]
+                 (validate signal schema template))]
     (cond
       client instance
       errors (->validation errors)
       :else
       (let [client (aws/client {:api :cloudformation})
-            r (cou-stack! client conf (:json (template-data :template template)))]
+            r (cou-stack! client signal (:json (template-data :template template)))]
         (if (anomaly? r)
           (->error (response-error "Error creating stack" r))
-          (when (wait-until-complete! system client)
+          (when (wait-until-complete! signal client)
             (stack-instance system client r)))))))
 
-(defn stop! [_ instance _]
-  (dissoc instance :client))
+(defn stop! [{::ds/keys [instance]}]
+  (select-keys instance [:stack-id]))
 
 (defn delete!
-  [conf
-   {:keys [client] :as instance}
-   {:keys [->error] :as system}]
+  [{:keys [->error name ::ds/instance]
+    {:keys [client]} ::ds/instance
+    :as signal}]
   (if-not client
     instance
-    (let [name (:name conf)
-          r (aws/invoke client {:op :DeleteStack
+    (let [r (aws/invoke client {:op :DeleteStack
                                 :request {:StackName name}})]
       (if (anomaly? r)
         (->error (response-error "Error deleting stack" r))
         (do
-          (wait-until-complete! system client)
-          (stop! conf instance system))))))
+          (wait-until-complete! signal client)
+          (stop! signal))))))
 
-(defn stack [& {:as conf}]
-  {:conf (assoc conf :comp/name :stack)
-   :delete delete!
+(defn stack [& {:as config}]
+  {::ds/config config
+   ::ds/start start!
+   ::ds/stop stop!
+   :salmon/delete delete!
    :salmon/pre-schema (val/allow-refs stack-schema)
-   :pre-validate
-   (fn [conf _ {:keys [->validation] ::ds/keys [component-def] :as system}]
-     (some-> (validate conf system
+   :salmon/pre-validate
+   (fn [{:keys [->validation]
+         {::ds/keys [component-def]} ::ds/system
+         :as signal}]
+     (some-> (validate signal
                        (:salmon/pre-schema component-def)
-                       (:template (:conf component-def))
+                       (-> component-def ::ds/config :template)
                        :pre? true)
              ->validation))
-   :schema stack-schema
-   :start start!
-   :stop stop!})
+   :schema stack-schema})
