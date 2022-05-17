@@ -205,3 +205,22 @@
              (->> sys ::ds/instances :services :stack-a :resources
                   (map :LogicalResourceId))))
       (sig/delete! sys))))
+
+(deftest test-parameters
+  (let [template {:AWSTemplateFormatVersion "2010-09-09"
+                  :Parameters {:Username {:Description "Username"
+                                          :Type "String"}}
+                  :Resources
+                  {:User1 (iam-user {:Ref "Username"})}}]
+    (is (thrown-with-msg?
+         ExceptionInfo
+         #"Error creating stack.*Parameters"
+         (sig/start! (system-a (stack-a :template template)))))
+    (let [sys (sig/start! (system-a (stack-a
+                                     :capabilities #{"CAPABILITY_NAMED_IAM"}
+                                     :parameters {:Username "User1"}
+                                     :template template)))]
+      (is (= ["User1"]
+             (->> sys ::ds/instances :services :stack-a :resources
+                  (map :LogicalResourceId))))
+      (sig/delete! sys))))

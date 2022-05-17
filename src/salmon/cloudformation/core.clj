@@ -8,6 +8,14 @@
             [malli.core :as m]
             [salmon.validation.interface :as val]))
 
+(defn full-name ^String [x]
+  (cond
+    (string? x) x
+    (simple-ident? x) (name x)
+    (ident? x) (str (namespace x) \/ (name x))
+    :else (throw (ex-info "full-name argument must be a String, Keyword, or Symbol"
+                          {:arg x}))))
+
 (def re-stack-name #"^[a-zA-Z][-a-zA-Z0-9]{0,127}$")
 
 (defn cfn-lint! [template]
@@ -65,6 +73,13 @@
                  (some->> response aws-error-message (str ": ")))
    :response response})
 
+(defn aws-parameters [parameters]
+  (mapv
+   (fn [[k v]]
+     {:ParameterKey (full-name k)
+      :ParameterValue v})
+   parameters))
+
 (defn wait-until-complete! [{:keys [->error]
                              ::ds/keys [resolved-component]
                              :as system}
@@ -107,8 +122,9 @@
 
 (defn cou-stack!
   "Create a new stack or update an existing one with the same name."
-  [client {:keys [capabilities name]} template-json]
+  [client {:keys [capabilities name parameters]} template-json]
   (let [request {:Capabilities (seq capabilities)
+                 :Parameters (aws-parameters parameters)
                  :StackName name
                  :TemplateBody template-json}
         r (aws/invoke client {:op :DescribeStacks
