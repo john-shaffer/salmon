@@ -134,6 +134,17 @@
           (is (-> @system ::ds/instances :services :stack-a :client)))
         (sig/delete! @system)))))
 
+(deftest test-update
+  (let [name (rand-stack-name)
+        sys (atom nil)]
+    (reset! sys (sig/start! (system-a (stack-a :name name :template template-a))))
+    (testing "Template update works during :start"
+      (reset! sys (sig/start! (system-a (stack-a :name name :template template-b))))
+      (is (= #{"OAI1" "OAI2"}
+             (->> @sys ::ds/instances :services :stack-a :resources
+                  (map :LogicalResourceId) set))))
+    (sig/delete! @sys)))
+
 (deftest test-no-change-start
   (testing "If no changes are to be made to the template, start succeeds"
     (let [template (assoc template-a :Outputs

@@ -116,10 +116,9 @@
         r (aws/invoke client {:op :UpdateStack :request request})
         msg (aws-error-message r)]
     (cond
-      (not= "ValidationError" (aws-error-code r)) r
       (= "No updates are to be performed." msg) stack-id
       (anomaly? r) r
-      :else (:StackId r))))
+      :else stack-id)))
 
 (defn cou-stack!
   "Create a new stack or update an existing one with the same name."
