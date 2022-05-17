@@ -83,6 +83,11 @@
          #"Validation failed during :start: E1001 Top level template section a is not valid"
          (sig/start! (system-a (stack-a :lint? true :template {:a (ds/ref :empty)})))))))
 
+(defn iam-user [name]
+  {:Type "AWS::IAM::User"
+   :Properties
+   {:UserName name}})
+
 (defn oai [comment]
   {:Type "AWS::CloudFront::CloudFrontOriginAccessIdentity"
    :Properties
@@ -172,3 +177,31 @@
          ExceptionInfo
          #".*Error creating stack.*Template format error"
          (sig/start! (system-a (stack-a :template {:a 1})))))))
+
+(deftest test-capabilities
+  (let [template {:AWSTemplateFormatVersion "2010-09-09"
+                  :Resources
+                  {:User1 (iam-user "User1")}}]
+    (is (thrown-with-msg?
+         ExceptionInfo
+         #"Error creating stack.*Requires capabilities"
+         (sig/start! (system-a (stack-a :template template)))))
+    (is (thrown-with-msg?
+         ExceptionInfo
+         #"Validation failed"
+         (sig/pre-validate! (system-a (stack-a
+                                       :capabilities #{"CAPABILITY_MADE_UP"}
+                                       :template template)))))
+    (is (thrown-with-msg?
+         ExceptionInfo
+         #"Validation failed"
+         (sig/start! (system-a (stack-a
+                                :capabilities #{"CAPABILITY_MADE_UP"}
+                                :template template)))))
+    (let [sys (sig/start! (system-a (stack-a
+                                     :capabilities #{"CAPABILITY_NAMED_IAM"}
+                                     :template template)))]
+      (is (= ["User1"]
+             (->> sys ::ds/instances :services :stack-a :resources
+                  (map :LogicalResourceId))))
+      (sig/delete! sys))))

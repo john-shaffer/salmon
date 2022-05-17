@@ -31,6 +31,10 @@
 
 (def stack-schema
   [:map
+   [:capabilities
+    {:optional true}
+    [:maybe
+     [:set [:enum "CAPABILITY_AUTO_EXPAND" "CAPABILITY_IAM" "CAPABILITY_NAMED_IAM"]]]]
    [:name
     [:and
      [:string {:min 1 :max 128}]
@@ -103,8 +107,9 @@
 
 (defn cou-stack!
   "Create a new stack or update an existing one with the same name."
-  [client {:keys [name]} template-json]
-  (let [request {:StackName name
+  [client {:keys [capabilities name]} template-json]
+  (let [request {:Capabilities (seq capabilities)
+                 :StackName name
                  :TemplateBody template-json}
         r (aws/invoke client {:op :DescribeStacks
                               :request {:StackName name}})
