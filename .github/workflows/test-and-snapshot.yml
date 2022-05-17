@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+      - syntax
 
 jobs:
   test-and-snapshot:

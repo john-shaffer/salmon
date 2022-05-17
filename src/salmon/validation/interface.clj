@@ -15,3 +15,8 @@
    values."
   [system x]
   (core/refs-resolveable? system x))
+
+(defn resolve-refs
+  "Resolve all refs in x."
+  [system x]
+  (core/resolve-refs system x))

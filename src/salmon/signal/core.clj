@@ -3,29 +3,30 @@
             [donut.system :as ds]
             [malli.core :as m]))
 
-(defn pre-validate-conf
-  [conf _ {:keys [->validation ::ds/component-def]}]
-  (let [schema (:salmon/pre-schema component-def)]
-    (when-let [errors (and schema (m/explain schema conf))]
+(defn pre-validate-conf [{:keys [->validation]
+                          ::ds/keys [system]
+                          :as signal}]
+  (let [schema (-> system ::ds/component-def :salmon/pre-schema)]
+    (when-let [errors (and schema (m/explain schema signal))]
       (->validation errors))))
 
 (defn first-line [s]
   (some-> s not-empty (str/split #"\n") first))
 
-(defn signal! [system signal]
-  (let [{out ::ds/out :as system} (ds/signal system signal)
+(defn signal! [system signal-name]
+  (let [{out ::ds/out :as system} (ds/signal system signal-name)
         {:keys [error validation]} out]
     (cond
       (seq error)
       (throw (ex-info
-              (str "Error during " signal
+              (str "Error during " signal-name
                    (some->> error :services first val :message
                             first-line (str ": ")))
               out))
 
       (seq validation)
       (throw (ex-info
-              (str "Validation failed during " signal
+              (str "Validation failed during " signal-name
                    (some->> validation :services first val :message
                             first-line (str ": ")))
               out))

@@ -4,21 +4,21 @@
 (declare signal!)
 
 (defn delete!
-  "Calls `(signal! system :/delete)`."
+  "Calls `(signal! system :salmon/delete)`."
   [system]
-  (signal! system :delete))
+  (signal! system :salmon/delete))
 
 (defn pre-validate-conf
-  "Handles :pre-validate signal by validating `conf` against the schema
+  "Handles :salmon/pre-validate signal by validating `conf` against the schema
   in the `:salmon/pre-schema` entry of the component definition. Does nothing if
   there is no such entry."
-  [conf instance system]
-  (core/pre-validate-conf conf instance system))
+  [signal]
+  (core/pre-validate-conf signal))
 
 (defn pre-validate!
-  "Calls `(signal! system :pre-validate)`."
+  "Calls `(signal! system :salmon/pre-validate)`."
   [system]
-  (signal! system :pre-validate))
+  (signal! system :salmon/pre-validate))
 
 (defn signal!
   "Sends the signal to the system. Throws a
@@ -29,11 +29,11 @@
   (core/signal! system signal))
 
 (defn start!
-  "Calls `(signal! system :start)`."
+  "Calls `(signal! system :donut.system/start)`."
   [system]
-  (signal! system :start))
+  (signal! system :donut.system/start))
 
 (defn stop!
-  "Calls `(signal! system :stop)`."
+  "Calls `(signal! system :donut.system/stop)`."
   [system]
-  (signal! system :stop))
+  (signal! system :donut.system/stop))
