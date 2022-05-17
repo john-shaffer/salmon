@@ -145,7 +145,7 @@
              (->> sys ::ds/instances :services :stack-a :resources
                   (map :LogicalResourceId)))
           "Resources are correct")
-      (is (= {"OUT1" {:OutputValue "1" :ExportName "OUT1"}}
+      (is (= {:OUT1 "1"}
              (->> sys ::ds/instances :services :stack-a :outputs))
           "Outputs are correct")
       (sig/delete! sys))))
@@ -156,10 +156,13 @@
                                  :Description "OUT1 desc"}
                          "OUT2" {:Value "2" :Export {:Name "OUT2"}}})
         sys (sig/start! (system-a (stack-a :template template)))]
-    (is (= {"OUT1" {:OutputValue "1" :ExportName "OUT1"
-                    :Description "OUT1 desc"}
-            "OUT2" {:OutputValue "2" :ExportName "OUT2"}}
+    (is (= {:OUT1 "1" :OUT2 "2"}
            (->> sys ::ds/instances :services :stack-a :outputs))
+        "Outputs are retrieved and attached to the stack instance")
+    (is (= {:OUT1 {:OutputValue "1" :ExportName "OUT1"
+                   :Description "OUT1 desc"}
+            :OUT2 {:OutputValue "2" :ExportName "OUT2"}}
+           (->> sys ::ds/instances :services :stack-a :outputs-raw))
         "Outputs are retrieved and attached to the stack instance")
     (sig/delete! sys)))
 
