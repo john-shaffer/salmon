@@ -3,10 +3,10 @@
             [donut.system :as ds]
             [malli.core :as m]))
 
-(defn pre-validate-conf [{:keys [->validation]
-                          ::ds/keys [system]
-                          :as signal}]
-  (let [schema (-> system ::ds/component-def :salmon/pre-schema)]
+(defn early-validate-conf [{:keys [->validation]
+                            ::ds/keys [system]
+                            :as signal}]
+  (let [schema (-> system ::ds/component-def :salmon/early-schema)]
     (when-let [errors (and schema (m/explain schema signal))]
       (->validation errors))))
 

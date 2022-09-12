@@ -8,17 +8,17 @@
   [system]
   (signal! system :salmon/delete))
 
-(defn pre-validate-conf
-  "Handles :salmon/pre-validate signal by validating `conf` against the schema
-  in the `:salmon/pre-schema` entry of the component definition. Does nothing if
+(defn early-validate-conf
+  "Handles :salmon/early-validate signal by validating `conf` against the schema
+  in the `:salmon/early-schema` entry of the component definition. Does nothing if
   there is no such entry."
   [signal]
-  (core/pre-validate-conf signal))
+  (core/early-validate-conf signal))
 
-(defn pre-validate!
-  "Calls `(signal! system :salmon/pre-validate)`."
+(defn early-validate!
+  "Calls `(signal! system :salmon/early-validate)`."
   [system]
-  (signal! system :salmon/pre-validate))
+  (signal! system :salmon/early-validate))
 
 (defn signal!
   "Sends the signal to the system. Throws a

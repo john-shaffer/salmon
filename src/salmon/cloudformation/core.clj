@@ -49,9 +49,10 @@
      [:string {:min 1 :max 128}]
      [:re re-stack-name]]]])
 
-(defn validate [{:keys [lint? ::ds/system] :as config} schema template & {:keys [pre?]}]
+(defn validate [{::ds/keys [config system]} schema template & {:keys [pre?]}]
   (let [errors (and schema (m/explain schema config))
-        resolved-template (val/resolve-refs system template)]
+        resolved-template (val/resolve-refs system template)
+        {:keys [lint?]} config]
     (cond
       errors errors
       (and pre? (not (val/refs-resolveable? system template))) nil
@@ -83,7 +84,9 @@
    parameters))
 
 (defn wait-until-complete!
-  [{:keys [->error name] :as signal} client]
+  [{:keys [->error] :as signal
+    {:keys [name]} ::ds/config}
+   client]
   (let [r (aws/invoke client {:op :DescribeStacks
                               :request {:StackName name}})
         status (-> r :Stacks first :StackStatus)]
@@ -120,8 +123,9 @@
 
 (defn cou-stack!
   "Create a new stack or update an existing one with the same name."
-  [client {:keys [capabilities name parameters]} template-json]
-  (let [request {:Capabilities (seq capabilities)
+  [client {::ds/keys [config]} template-json]
+  (let [{:keys [capabilities name parameters]} config
+        request {:Capabilities (seq capabilities)
                  :Parameters (aws-parameters parameters)
                  :StackName name
                  :TemplateBody template-json}
@@ -184,10 +188,11 @@
        :resources resources
        :stack-id stack-id})))
 
-(defn start! [{:keys [->error ->validation template]
-               ::ds/keys [instance system]
+(defn start! [{:keys [->error ->validation]
+               ::ds/keys [config instance system]
                :as signal}]
-  (let [{:keys [client]} instance
+  (let [{:keys [template]} config
+        {:keys [client]} instance
         schema (-> system ::ds/component-def :schema)
         errors (when-not client
                  (validate signal schema template))]
@@ -206,7 +211,8 @@
   (select-keys instance [:stack-id]))
 
 (defn delete!
-  [{:keys [->error name ::ds/instance]
+  [{:keys [->error ::ds/instance]
+    {:keys [name]} ::ds/config
     {:keys [client]} ::ds/instance
     :as signal}]
   (if-not client
@@ -224,13 +230,13 @@
    ::ds/start start!
    ::ds/stop stop!
    :salmon/delete delete!
-   :salmon/pre-schema (val/allow-refs stack-schema)
-   :salmon/pre-validate
+   :salmon/early-schema (val/allow-refs stack-schema)
+   :salmon/early-validate
    (fn [{:keys [->validation]
          {::ds/keys [component-def]} ::ds/system
          :as signal}]
      (some-> (validate signal
-                       (:salmon/pre-schema component-def)
+                       (:salmon/early-schema component-def)
                        (-> component-def ::ds/config :template)
                        :pre? true)
              ->validation))
