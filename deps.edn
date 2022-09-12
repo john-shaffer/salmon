@@ -1,19 +1,19 @@
 {:paths ["src"]
  :deps {org.clojure/clojure {:mvn/version "1.11.1"}
-        babashka/fs {:mvn/version "0.1.6"}
+        babashka/fs {:mvn/version "0.1.11"}
         club.donutpower/system {:mvn/version "0.0.165"}
-        com.cognitect.aws/api {:mvn/version "0.8.539"}
-        com.cognitect.aws/cloudformation {:mvn/version "821.2.1107.0"}
-        com.cognitect.aws/endpoints {:mvn/version "1.1.12.206"}
+        com.cognitect.aws/api {:mvn/version "0.8.589"}
+        com.cognitect.aws/cloudformation {:mvn/version "822.2.1171.0"}
+        com.cognitect.aws/endpoints {:mvn/version "1.1.12.280"}
         hashp/hashp {:mvn/version "0.2.1"}
         medley/medley {:mvn/version "1.4.0"}
         org.clojure/data.json {:mvn/version "2.4.0"}}
  :aliases
  {:build {:deps {io.github.seancorfield/build-clj
-                 {:git/tag "v0.8.0" :git/sha "9bd8b8a"}}
+                 {:git/tag "v0.8.3" :git/sha "7ac1f8d"}}
           :ns-default build}
   :test {:extra-deps {com.gfredericks/test.chuck {:mvn/version "0.2.13"}
                       lambdaisland/kaocha {:git/url "https://github.com/insilica/kaocha.git"
-                                           :sha "811d37448e10b52e78dd2ef6ba95535e59f6bbda"}
+                                           :sha "152f6f0253218d2cc2840434c6339cfe204c8ac1"}
                       lambdaisland/kaocha-cloverage {:mvn/version "1.0.75"}}
          :extra-paths ["test"]}}}
