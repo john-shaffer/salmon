@@ -7,7 +7,6 @@ mkShell {
     clj-kondo
     (clojure.override { jdk = jdk; })
     git
-    polylith
     python39Packages.cfn-lint
     rlwrap # Used by clj
     time
