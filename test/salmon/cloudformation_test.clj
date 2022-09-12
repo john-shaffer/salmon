@@ -1,9 +1,9 @@
-(ns salmon.cloudformation.interface-test
+(ns salmon.cloudformation-test
   (:require [clojure.test :refer [deftest is testing]]
             [donut.system :as ds]
             [malli.generator :as mg]
-            [salmon.cloudformation.interface :as cfn]
-            [salmon.signal.interface :as sig])
+            [salmon.cloudformation :as cfn]
+            [salmon.signal :as sig])
   (:import (clojure.lang ExceptionInfo)))
 
 (defn system-a [stack]

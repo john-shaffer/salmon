@@ -1,12 +1,12 @@
-(ns salmon.cleanup.core
+(ns salmon.cleanup
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
             [cognitect.aws.client.api :as aws]))
 
-(defn anomaly? [response]
+(defn- anomaly? [response]
   (boolean (:cognitect.anomalies/category response)))
 
-(def deleteable-statuses
+(def ^{:private true} deleteable-statuses
   ["CREATE_COMPLETE"
    "CREATE_FAILED"
    "DELETE_FAILED"
@@ -20,7 +20,7 @@
    "UPDATE_ROLLBACK_COMPLETE"
    "UPDATE_ROLLBACK_FAILED"])
 
-(defn get-stacks [client & [next-token]]
+(defn- get-stacks [client & [next-token]]
   (lazy-seq
    (Thread/sleep 1000)
    (let [{:keys [NextToken StackSummaries] :as r}
@@ -35,7 +35,7 @@
         (when NextToken
           (get-stacks client NextToken)))))))
 
-(defn wait-until-complete! [client stack-name]
+(defn- wait-until-complete! [client stack-name]
   (let [r (aws/invoke client {:op :DescribeStacks
                               :request {:StackName stack-name}})
         status (-> r :Stacks first :StackStatus)]
@@ -52,7 +52,7 @@
         (Thread/sleep 1000)
         (recur client stack-name)))))
 
-(defn delete-stacks! [client]
+(defn- delete-stacks! [client]
   (let [stack-ids (mapv :StackId (get-stacks client))]
     (log/info "Found" (count stack-ids) "stacks")
     (doseq [stack-id stack-ids]
@@ -66,7 +66,12 @@
       (wait-until-complete! client stack-id)
       (Thread/sleep 1000))))
 
-(defn delete-all! [& {:keys [confirm?]}]
+#_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
+(defn delete-all!
+   "Deletes all CloudFormation stacks.
+   
+   Must pass :confirm? true."
+  [& {:keys [confirm?]}]
   (if confirm?
     (do
       (log/info "Deleting all CloudFormation stacks")
