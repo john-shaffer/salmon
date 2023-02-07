@@ -1,1 +1,4 @@
-clojure -M:antq "$@"
+#!/usr/bin/env sh
+clojure -M:antq \
+  --exclude=org.clojure/clojure \
+  "$@"
