@@ -11,15 +11,6 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Cache Clojure dependencies
-        uses: actions/cache@v3
-        with:
-          key: clj-salmon-${{ hashFiles('**/deps.edn') }}
-          restore-keys: clj-salmon-
-          path: |
-            ~/.gitlibs
-            ~/.m2/repository
-
       - name: Restore cached Nix store
         id: nix-cache-restore
         uses: john-shaffer/cache/restore@main
@@ -47,6 +38,32 @@ jobs:
           path: |
             /nix/store
             /nix/var/nix/db/db.sqlite
+
+      - name: Restore cached Clojure dependencies
+        id: clj-cache-restore
+        uses: actions/cache/restore@v3
+        with:
+          key: clj-${{ github.repository }}-${{ hashFiles('**/deps.edn') }}
+          restore-keys: clj-${{ github.repository }}-
+          path: |
+            ~/.gitlibs
+            ~/.m2/repository
+
+      - name: Pull Clojure dependencies
+        if: steps.clj-cache-restore.outputs.cache-hit != 'true'
+        run: |
+          nix develop -c clojure -P
+          nix develop -c clojure -A:build -P
+          nix develop -c clojure -A:test -P
+
+      - name: Save cached Clojure dependencies
+        if: steps.clj-cache-restore.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v3
+        with:
+          key: clj-${{ github.repository }}-${{ hashFiles('**/deps.edn') }}
+          path: |
+            ~/.gitlibs
+            ~/.m2/repository
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
