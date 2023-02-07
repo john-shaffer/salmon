@@ -1,14 +1,6 @@
-{ sources ? import ./nix/sources.nix, pkgs ? import sources.nixpkgs { } }:
-let
-  jdk = pkgs.openjdk17;
-in with pkgs;
-mkShell {
-  buildInputs = [
-    clj-kondo
-    (clojure.override { jdk = jdk; })
-    git
-    python39Packages.cfn-lint
-    rlwrap # Used by clj
-    time
-  ];
-}
+(import (let lock = builtins.fromJSON (builtins.readFile ./flake.lock);
+in fetchTarball {
+  url =
+    "https://github.com/edolstra/flake-compat/archive/${lock.nodes.flake-compat.locked.rev}.tar.gz";
+  sha256 = lock.nodes.flake-compat.locked.narHash;
+}) { src = ./.; }).shellNix
