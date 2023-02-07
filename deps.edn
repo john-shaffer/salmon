@@ -9,8 +9,15 @@
         medley/medley {:mvn/version "1.4.0"}
         org.clojure/data.json {:mvn/version "2.4.0"}}
  :aliases
- {:build {:deps {io.github.seancorfield/build-clj
-                 {:git/tag "v0.8.3" :git/sha "7ac1f8d"}}
+ {:antq
+  {:deps
+   {com.github.liquidz/antq {:mvn/version "2.2.992"}
+    org.slf4j/slf4j-nop {:mvn/version "2.0.6"}}
+   :main-opts ["-m" "antq.core"]}
+  :build
+  {:deps {io.github.seancorfield/build-clj
+          {:git/tag "v0.8.3" :git/sha "7ac1f8d"}}
+   :ns-default build}
           :ns-default build}
   :test {:extra-deps {com.gfredericks/test.chuck {:mvn/version "0.2.13"}
                       hashp/hashp {:mvn/version "0.2.1"}

@@ -1,4 +1,1 @@
-clojure -Sdeps '{:deps {com.github.liquidz/antq {:mvn/version "2.0.895"} org.slf4j/slf4j-nop {:mvn/version "1.7.32"}}}' -M -m antq.core \
-  --directory=components/* \
-  --exclude=john-shaffer/cache \
-  "$@"
+clojure -M:antq "$@"
