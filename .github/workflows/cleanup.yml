@@ -22,7 +22,7 @@ jobs:
             /nix/var/nix/db/db.sqlite
 
       - name: Install Nix
-        uses: cachix/install-nix-action@v18
+        uses: cachix/install-nix-action@v19
 
       - name: Build Nix derivations
         if: steps.nix-cache-restore.outputs.cache-hit != 'true'
