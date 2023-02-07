@@ -1,7 +1,8 @@
 {:paths ["src"]
  :deps {org.clojure/clojure {:mvn/version "1.11.1"}
         babashka/fs {:mvn/version "0.1.11"}
-        club.donutpower/system {:mvn/version "0.0.165"}
+        club.donutpower/system {:mvn/version "0.0.165"
+                                :exclusions [tailrecursion/cljs-priority-map]}
         com.cognitect.aws/api {:mvn/version "0.8.589"}
         com.cognitect.aws/cloudformation {:mvn/version "822.2.1171.0"}
         com.cognitect.aws/endpoints {:mvn/version "1.1.12.280"}
