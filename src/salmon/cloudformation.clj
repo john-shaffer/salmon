@@ -230,10 +230,10 @@
 
 (defn stack
   "Returns a component that manages a CloudFormation stack.
-   
+
    Supported signals: ::ds/start, ::ds/stop, :salmon/delete,
    :salmon/early-validate
-   
+
    config options:
 
    :capabilities
@@ -242,7 +242,7 @@
    #{\"CAPABILITY_AUTO_EXPAND\"
      \"CAPABILITY_IAM\"
      \"CAPABILITY_NAMED_IAM\"}
-   
+
    :lint?
    Validate the template using cfn-lint.
    Default: false.
@@ -250,7 +250,7 @@
    :name
    The name of the CloudFormation stack. Must match the
    regex #\"^[a-zA-Z][-a-zA-Z0-9]{0,127}$\"
- 
+
    :template
    A map representing a CloudFormation template. The map
    may contain donut.system refs."
