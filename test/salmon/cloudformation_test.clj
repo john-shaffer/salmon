@@ -6,8 +6,16 @@
             [salmon.signal :as sig])
   (:import (clojure.lang ExceptionInfo)))
 
-(defn system-a [stack]
+(def system-base
   {::ds/base {:salmon/early-validate sig/early-validate-conf}
+   ::ds/signals
+   {:salmon/delete {:order :topsort}
+    :salmon/early-validate {:order :reverse-topsort}
+    ::ds/validate {:order :reverse-topsort}}})
+
+(defn system-a [stack]
+  (assoc
+   system-base
    ::ds/defs
    {:services {:comp {::ds/config {:name :conf}
                       ::ds/start (constantly {:started? true})
@@ -16,11 +24,7 @@
                :T {::ds/start (constantly :T)}
                :x {::ds/start :X}
                :y {::ds/start "Y!"}
-               :stack-a stack}}
-   ::ds/signals
-   {:salmon/delete {:order :topsort}
-    :salmon/early-validate {:order :reverse-topsort}
-    ::ds/validate {:order :reverse-topsort}}})
+               :stack-a stack}}))
 
 (defn rand-stack-name []
   (mg/generate [:re cfn/re-stack-name]))
