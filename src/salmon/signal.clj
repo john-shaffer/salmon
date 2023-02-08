@@ -7,9 +7,9 @@
  "Handles :salmon/early-validate signal by validating `conf` against the schema
   in the `:salmon/early-schema` entry of the component definition. Does nothing if
   there is no such entry."
-  [{:keys [->validation] ::ds/keys [system] :as signal}]
+  [{:keys [->validation] ::ds/keys [config system] :as signal}]
   (let [schema (-> system ::ds/component-def :salmon/early-schema)]
-    (when-let [errors (and schema (m/explain schema signal))]
+    (when-let [errors (and schema (m/explain schema config))]
       (->validation errors))))
 
 (defn- first-line [s]
