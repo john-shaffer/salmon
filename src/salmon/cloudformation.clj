@@ -191,7 +191,7 @@
        :resources resources
        :stack-id stack-id})))
 
-(defn- start! [{:keys [->error ->validation]
+(defn- start-stack! [{:keys [->error ->validation]
                ::ds/keys [config instance system]
                :as signal}]
   (let [{:keys [template]} config
@@ -256,7 +256,7 @@
    may contain donut.system refs."
   [& {:as config}]
   {::ds/config config
-   ::ds/start start!
+   ::ds/start start-stack!
    ::ds/stop stop!
    :salmon/delete delete!
    :salmon/early-schema (val/allow-refs stack-schema)
