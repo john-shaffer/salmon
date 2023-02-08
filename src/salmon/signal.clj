@@ -13,7 +13,9 @@
       (->validation errors))))
 
 (defn- first-line [s]
-  (some-> s not-empty (str/split #"\n") first))
+  (if (string? s)
+    (some-> s not-empty (str/split #"\n") first)
+    (pr-str s)))
 
 (defn signal!
   "Sends the signal to the system. Throws a
