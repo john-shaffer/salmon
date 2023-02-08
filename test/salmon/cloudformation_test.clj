@@ -153,9 +153,10 @@
 
 (deftest test-no-change-start
   (testing "If no changes are to be made to the template, start succeeds"
-    (let [template (assoc template-a :Outputs
-                          {"OUT1" {:Value "1" :Export {:Name "OUT1"}}})
-          sys (system-a (stack-a :template template))
+    (let [stack-name (rand-stack-name)
+          template (assoc template-a :Outputs
+                          {"OUT1" {:Value "1" :Export {:Name (str stack-name "-OUT1")}}})
+          sys (system-a (stack-a :name stack-name :template template))
           _ (sig/start! sys)
           sys (sig/start! sys)]
       (is (= ["OAI1"]
@@ -168,17 +169,18 @@
       (sig/delete! sys))))
 
 (deftest test-outputs
-  (let [template (assoc template-a :Outputs
-                        {"OUT1" {:Value "1" :Export {:Name "OUT1"}
+  (let [stack-name (rand-stack-name)
+        template (assoc template-a :Outputs
+                        {"OUT1" {:Value "1" :Export {:Name (str stack-name "-OUT1")}
                                  :Description "OUT1 desc"}
-                         "OUT2" {:Value "2" :Export {:Name "OUT2"}}})
-        sys (sig/start! (system-a (stack-a :template template)))]
+                         "OUT2" {:Value "2" :Export {:Name (str stack-name "-OUT2")}}})
+        sys (sig/start! (system-a (stack-a :name stack-name :template template)))]
     (is (= {:OUT1 "1" :OUT2 "2"}
            (->> sys ::ds/instances :services :stack-a :outputs))
         "Outputs are retrieved and attached to the stack instance")
-    (is (= {:OUT1 {:OutputValue "1" :ExportName "OUT1"
+    (is (= {:OUT1 {:OutputValue "1" :ExportName (str stack-name "-OUT1")
                    :Description "OUT1 desc"}
-            :OUT2 {:OutputValue "2" :ExportName "OUT2"}}
+            :OUT2 {:OutputValue "2" :ExportName (str stack-name "-OUT2")}}
            (->> sys ::ds/instances :services :stack-a :outputs-raw))
         "Outputs are retrieved and attached to the stack instance")
     (sig/delete! sys)))
