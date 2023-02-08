@@ -5,4 +5,4 @@
 - Update donut.system dependency from club.donutpower/system 0.0.165
   to party.donut/system 0.0.171.
 - Handle non-string error and validation messages in salmon.signal/signal!
-- Show a humanized error message for schema validations in early-validate-conf
+- Show a humanized error message for early-schema validation errors

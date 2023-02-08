@@ -6,6 +6,7 @@
             [cognitect.aws.client.api :as aws]
             [donut.system :as ds]
             [malli.core :as m]
+            [malli.error :as merr]
             [medley.core :as me]
             [salmon.validation :as val]))
 
@@ -57,7 +58,8 @@
         resolved-template (val/resolve-refs system template)
         {:keys [lint?]} config]
     (cond
-      errors errors
+      errors {:errors errors
+              :message (merr/humanize errors)}
       (and pre? (not (val/refs-resolveable? system template))) nil
       (not (map? resolved-template)) {:message "Template must be a map."}
       (empty? resolved-template) {:message "Template must not be empty."}

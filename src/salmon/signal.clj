@@ -2,7 +2,7 @@
   (:require [clojure.string :as str]
             [donut.system :as ds]
             [malli.core :as m]
-            [malli.error :as me]))
+            [malli.error :as merr]))
 
 (defn early-validate-conf
  "Handles :salmon/early-validate signal by validating `conf` against the schema
@@ -11,7 +11,8 @@
   [{:keys [->validation] ::ds/keys [config system] :as signal}]
   (let [schema (-> system ::ds/component-def :salmon/early-schema)]
     (when-let [errors (and schema (m/explain schema config))]
-      (->validation {:message (me/humanize errors)}))))
+      (->validation {:errors errors
+                     :message (merr/humanize errors)}))))
 
 (defn- first-line [s]
   (if (string? s)

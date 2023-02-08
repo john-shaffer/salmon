@@ -2,7 +2,7 @@ name: Clean Up AWS Resources
 
 on:
   schedule:
-    - cron: '9 5 * * *'  # every day at 9:05 am UTC
+    - cron: '5 9 * * *'  # every day at 9:05 am UTC
 
 jobs:
   test-and-release:
