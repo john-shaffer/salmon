@@ -18,6 +18,7 @@
             clj-kondo
             clojure
             git
+            jdk
             python39Packages.cfn-lint
             rlwrap # Used by clj
             time
