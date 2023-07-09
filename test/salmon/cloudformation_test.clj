@@ -26,6 +26,13 @@
                :y {::ds/start "Y!"}
                :stack-a stack}}))
 
+(defn system-b [stack stack-properties]
+  (assoc
+   system-base
+   ::ds/defs
+   {:services {:stack-a stack
+               :stack-properties-a stack-properties}}))
+
 (defn rand-stack-name []
   (mg/generate [:re cfn/re-stack-name]))
 
@@ -33,6 +40,11 @@
   (-> {:name (rand-stack-name)}
       (merge opts)
       cfn/stack))
+
+(defn stack-properties-a [& {:as opts}]
+  (-> {:name (ds/local-ref [:stack-a :name])}
+      (merge opts)
+      cfn/stack-properties))
 
 (deftest test-blank-template-early-validation
   (testing "Blank templates should fail validation"
@@ -253,3 +265,68 @@
              (->> sys ::ds/instances :services :stack-a :resources
                   (map :LogicalResourceId))))
       (sig/delete! sys))))
+
+(deftest test-stack-properties-validation
+  (testing "stack-properties early-validation works"
+    (is (thrown-with-msg?
+         ExceptionInfo
+         #"Validation failed during :salmon/early-validate: \{:name.*}"
+         (sig/early-validate! (system-b
+                               (stack-a :template template-a)
+                               (stack-properties-a)))))))
+
+(deftest test-stack-properties
+  (let [stack-name (rand-stack-name)
+        template (assoc template-b :Outputs
+                        {"OUT1" {:Value "1" :Export {:Name (str stack-name "-OUT1")}
+                                 :Description "OUT1 desc"}
+                         "OUT2" {:Value "2" :Export {:Name (str stack-name "-OUT2")}}})
+        system (atom nil)]
+    (testing ":start works"
+      (reset! system (sig/start! (system-b
+                                  (stack-a :lint? true
+                                           :name stack-name
+                                           :template template)
+                                  (stack-properties-a))))
+      (is (-> @system ::ds/instances :services :stack-properties-a))
+      (testing ":start is idempotent"
+        (let [start (System/nanoTime)]
+          (is (= (::ds/instances @system) (::ds/instances (sig/start! @system))))
+          (is (> 30 (quot (- (System/nanoTime) start) 1000000)))))
+      (is (= #{"OAI1" "OAI2"}
+             (->> @system ::ds/instances :services :stack-properties-a :resources
+                  (map :LogicalResourceId) set))
+          "Resources are retrieved and attached to the stack-properties instance")
+      (is (= {:OUT1 "1" :OUT2 "2"}
+             (->> @system ::ds/instances :services :stack-properties-a :outputs))
+          "Outputs are retrieved and attached to the stack-properties instance")
+      (is (= {:OUT1 {:OutputValue "1" :ExportName (str stack-name "-OUT1")
+                     :Description "OUT1 desc"}
+              :OUT2 {:OutputValue "2" :ExportName (str stack-name "-OUT2")}}
+             (->> @system ::ds/instances :services :stack-properties-a :outputs-raw))
+          "Outputs are retrieved and attached to the stack-properties instance")
+      (testing ":stop works"
+        (reset! system (sig/stop! @system))
+        (let [stack-id (-> @system ::ds/instances :services :stack-a :stack-id)]
+          (is (= {:name stack-name :stack-id stack-id}
+                 (-> @system ::ds/instances :services :stack-properties-a))))
+        (testing ":stop is idempotent"
+          (let [start (System/nanoTime)]
+            (is (= (::ds/instances @system) (::ds/instances (sig/stop! @system))))
+            (is (> 30 (quot (- (System/nanoTime) start) 1000000)))))
+        (testing "system can be restarted after :stop"
+          (reset! system (sig/start! @system))
+          (is (-> @system ::ds/instances :services :stack-properties-a :resources))))
+      (testing ":delete works"
+        (let [stack-id (-> @system ::ds/instances :services :stack-a :stack-id)]
+          (reset! system (sig/delete! @system))
+          (is (= {:name stack-name :stack-id stack-id}
+                 (-> @system ::ds/instances :services :stack-properties-a))))
+        (testing ":delete is idempotent"
+          (let [start (System/nanoTime)]
+            (is (= (::ds/instances @system) (::ds/instances (sig/delete! @system))))
+            (is (> 30 (quot (- (System/nanoTime) start) 1000000)))))
+        (testing "system can be restarted after :delete"
+          (reset! system (sig/start! @system))
+          (is (-> @system ::ds/instances :services :stack-properties-a :resources)))
+        (sig/delete! @system)))))

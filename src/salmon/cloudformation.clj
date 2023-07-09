@@ -53,6 +53,14 @@
      [:string {:min 1 :max 128}]
      [:re re-stack-name]]]])
 
+(def ^{:private true}
+  stack-properties-schema
+  [:map
+   [:name
+    [:and
+     [:string {:min 1 :max 128}]
+     [:re re-stack-name]]]])
+
 (defn- validate [{::ds/keys [component-id config system]} schema template & {:keys [pre?]}]
   (let [errors (and schema (m/explain schema config))
         resolved-template (val/resolve-refs system template)
@@ -273,3 +281,70 @@
                        :pre? true)
              ->validation))
    :schema stack-schema})
+
+(defn- get-stack-properties!
+  "Checks whether the stack exists and returns its ID."
+  [client {::ds/keys [config]}]
+  (let [{:keys [name]} config
+        r (aws/invoke client {:op :DescribeStacks
+                              :request {:StackName name}})
+        stack-id (some-> r :Stacks first :StackId)]
+    (or stack-id r)))
+
+(defn- wait-until-creation-complete!
+  [{:keys [->error] :as signal
+    {:keys [name]} ::ds/config}
+   client]
+  (let [r (aws/invoke client {:op :DescribeStacks
+                              :request {:StackName name}})
+        status (-> r :Stacks first :StackStatus)]
+    (cond
+      (anomaly? r)
+      (->error (response-error "Error getting stack status" r))
+
+      (str/ends-with? status "_COMPLETE") true
+
+      (not (str/starts-with? status "CREATE_")) true
+
+      :else
+      (do
+        (Thread/sleep 5000)
+        (recur signal client)))))
+
+(defn- start-stack-properties! [{:keys [->error ->validation]
+                                 ::ds/keys [config instance system]
+                                 :as signal}]
+  (let [{:keys [client]} instance
+        schema (-> system ::ds/component-def :schema)
+        errors (when-not client
+                 (and schema (m/explain schema config)))]
+    (cond
+      client instance
+      errors (->validation errors)
+      :else
+      (let [client (aws/client {:api :cloudformation})
+            r (get-stack-properties! client signal)]
+        (if (anomaly? r)
+          (->error (response-error "Error creating stack" r))
+          (when (wait-until-creation-complete! signal client)
+            (stack-instance system client (:name config) r)))))))
+
+(defn stack-properties
+  "Returns a component that describes an existing CloudFormation
+   stack's properties. Properties include the stack's resources,
+   and outputs.
+
+   Supported signals: ::ds/start, ::ds/stop
+
+   config options:
+
+   :name
+   The name of the CloudFormation stack. Must match the
+   regex #\"^[a-zA-Z][-a-zA-Z0-9]{0,127}$\""
+  [& {:as config}]
+  {::ds/config config
+   ::ds/start start-stack-properties!
+   ::ds/stop stop!
+   :salmon/delete stop!
+   :salmon/early-schema (val/allow-refs stack-properties-schema)
+   :schema stack-properties-schema})

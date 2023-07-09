@@ -9,3 +9,6 @@
 - Allow donut.system local-refs in component configs
 - (breaking) `salmon.validation/refs-resolveable?` now takes a `component-id` argument so that it can handle local-refs. 
 - Add `:name` to stack instance.
+- Add salmon.cloudformation/stack-properties to create a component that
+  retrieves the properties of an existing CloudFormation stack. Properties
+  include resources and outputs.
