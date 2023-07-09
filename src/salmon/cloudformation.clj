@@ -53,14 +53,14 @@
      [:string {:min 1 :max 128}]
      [:re re-stack-name]]]])
 
-(defn- validate [{::ds/keys [config system]} schema template & {:keys [pre?]}]
+(defn- validate [{::ds/keys [component-id config system]} schema template & {:keys [pre?]}]
   (let [errors (and schema (m/explain schema config))
         resolved-template (val/resolve-refs system template)
         {:keys [lint?]} config]
     (cond
       errors {:errors errors
               :message (merr/humanize errors)}
-      (and pre? (not (val/refs-resolveable? system template))) nil
+      (and pre? (not (val/refs-resolveable? system component-id template))) nil
       (not (map? resolved-template)) {:message "Template must be a map."}
       (empty? resolved-template) {:message "Template must not be empty."}
       lint? (let [{:keys [message]} (template-data :template resolved-template)]
