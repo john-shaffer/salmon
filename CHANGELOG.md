@@ -6,3 +6,6 @@
   to party.donut/system 0.0.171.
 - Handle non-string error and validation messages in salmon.signal/signal!
 - Show a humanized error message for early-schema validation errors
+- Allow donut.system local-refs in component configs
+- (breaking) `salmon.validation/refs-resolveable?` now takes a `component-id` argument so that it can handle local-refs. 
+- Add `:name` to stack instance.

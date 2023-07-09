@@ -8,8 +8,8 @@
    (fn [[kw schema conds]]
      [kw schema
       [:or
-       [:tuple [:= ::ds/ref]
-        [:or keyword? [:vector keyword?]]]
+       ds/Ref
+       ds/LocalRef
        conds]])
    map-entry))
 
@@ -40,18 +40,26 @@
   [system x]
   (sp/transform (sp/walker ds/ref?) (partial resolve-ref system) x))
 
-(defn- ref-resolveable? [system ref]
+(defn- ref-resolveable? [system component-id ref]
   (let [{::ds/keys [instances resolved-defs]} system
-        k2 (take 2 (ds/ref-key ref))]
-    (if (ds/ref? ref)
-      (boolean
-       (or
-        (get-in instances k2)
-        (some-> resolved-defs (get-in k2) ::ds/start fn? not)))
-      (throw (ex-info "Not a ref" {:value ref})))))
+        rt (ds/ref-type ref)
+        rkey (cond
+               (= ::ds/ref rt)
+               (take 2 (ds/ref-key ref))
+
+               (= ::ds/local-ref rt)
+               (into [(first component-id)]
+                     (ds/ref-key ref))
+
+               :else
+               (throw (ex-info "Not a ref" {:value ref})))]
+    (boolean
+     (or
+      (get-in instances rkey)
+      (some-> resolved-defs (get-in rkey) ::ds/start fn? not)))))
 
 (defn refs-resolveable?
   "Returns true if all refs refer to either started services or constant
    values."
-  [system x]
-  (every? (partial ref-resolveable? system) (refs x)))
+  [system component-id x]
+  (every? (partial ref-resolveable? system component-id) (refs x)))
