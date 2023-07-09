@@ -175,7 +175,7 @@
       r
       (mapcat :StackResourceSummaries r))))
 
-(defn- stack-instance [{:keys [->error]} client stack-id]
+(defn- stack-instance [{:keys [->error]} client stack-name stack-id]
   (let [resources (get-resources client stack-id)
         outputs-raw (when-not (anomaly? resources)
                       (get-outputs-raw client stack-id))]
@@ -188,6 +188,7 @@
 
       :else
       {:client client
+       :name stack-name
        :outputs (me/map-vals :OutputValue outputs-raw)
        :outputs-raw outputs-raw
        :resources resources
@@ -210,10 +211,10 @@
         (if (anomaly? r)
           (->error (response-error "Error creating stack" r))
           (when (wait-until-complete! signal client)
-            (stack-instance system client r)))))))
+            (stack-instance system client (:name config) r)))))))
 
 (defn- stop! [{::ds/keys [instance]}]
-  (select-keys instance [:stack-id]))
+  (select-keys instance [:name :stack-id]))
 
 (defn- delete!
   [{:keys [->error ::ds/instance]

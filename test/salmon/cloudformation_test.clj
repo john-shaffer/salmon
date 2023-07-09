@@ -112,9 +112,11 @@
   (assoc-in template-a [:Resources :OAI2] (oai "OAI2")))
 
 (deftest test-lifecycle
-  (let [system (atom nil)]
+  (let [stack-name (rand-stack-name)
+        system (atom nil)]
     (testing ":start works"
       (reset! system (sig/start! (system-a (stack-a :lint? true
+                                                    :name stack-name
                                                     :template template-a))))
       (is (-> @system ::ds/instances :services :stack-a :client))
       (testing ":start is idempotent"
@@ -134,7 +136,7 @@
       (testing ":delete works"
         (let [stack-id (-> @system ::ds/instances :services :stack-a :stack-id)]
           (reset! system (sig/delete! @system))
-          (is (= {:stack-id stack-id}
+          (is (= {:name stack-name :stack-id stack-id}
                  (-> @system ::ds/instances :services :stack-a))))
         (testing ":delete is idempotent"
           (let [start (System/nanoTime)]
