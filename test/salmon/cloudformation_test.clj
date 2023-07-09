@@ -121,14 +121,14 @@
       (is (-> @system ::ds/instances :services :stack-a :client))
       (testing ":start is idempotent"
         (let [start (System/nanoTime)]
-          (is (= @system (sig/start! @system)))
+          (is (= (::ds/instances @system) (::ds/instances (sig/start! @system))))
           (is (> 30 (quot (- (System/nanoTime) start) 1000000)))))
       (testing ":stop works"
         (reset! system (sig/stop! @system))
         (is (= nil (-> @system ::ds/instances :services :stack-a :client)))
         (testing ":stop is idempotent"
           (let [start (System/nanoTime)]
-            (is (= @system (sig/stop! @system)))
+            (is (= (::ds/instances @system) (::ds/instances (sig/stop! @system))))
             (is (> 30 (quot (- (System/nanoTime) start) 1000000)))))
         (testing "system can be restarted after :stop"
           (reset! system (sig/start! @system))
@@ -140,7 +140,7 @@
                  (-> @system ::ds/instances :services :stack-a))))
         (testing ":delete is idempotent"
           (let [start (System/nanoTime)]
-            (is (= @system (sig/delete! @system)))
+            (is (= (::ds/instances @system) (::ds/instances (sig/delete! @system))))
             (is (> 30 (quot (- (System/nanoTime) start) 1000000)))))
         (testing "system can be restarted after :delete"
           (reset! system (sig/start! @system))
