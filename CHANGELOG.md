@@ -1,5 +1,9 @@
 ## Unreleased
 
+- Fix incorrect resolution of local-refs.
+- (breaking) `salmon.validation/resolve-refs` now takes a 
+  `referencing-component-id` argument so that it can handle local-refs. 
+
 ## v0.9.0 (2023-07-08)
 
 - Fix a bug in salmon.signal/early-validate-conf that caused it to fail

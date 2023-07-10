@@ -21,6 +21,7 @@
                       ::ds/start (constantly {:started? true})
                       ::ds/stop (fn [_])}
                :empty {::ds/start (constantly {})}
+               :empty-m {::ds/start {}}
                :T {::ds/start (constantly :T)}
                :x {::ds/start :X}
                :y {::ds/start "Y!"}
@@ -87,6 +88,17 @@
     (is (sig/early-validate! (system-a (stack-a :lint? true :template (ds/ref [:services :T]))))))
   (testing "Pre-validation linting doesn't run if the template has a nested ref to an un-started service"
     (is (sig/early-validate! (system-a (stack-a :lint? true :template {:a (ds/ref [:services :T])}))))))
+
+(deftest test-local-ref-early-validation
+  (testing "Local refs should be resolved and their values validated during early-validate!"
+    (is (thrown-with-msg?
+         ExceptionInfo
+         #"Validation failed during :salmon/early-validate: Template must not be empty"
+         (sig/early-validate! (system-a (stack-a :template (ds/local-ref [:empty-m]))))))
+    (is (thrown-with-msg?
+         ExceptionInfo
+         #"Validation failed during :salmon/early-validate: Template must be a map"
+         (sig/early-validate! (system-a (stack-a :lint? true :template (ds/local-ref [:x]))))))))
 
 (deftest test-validation-linting
   (testing "ref templates are validated during :start"

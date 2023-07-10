@@ -63,7 +63,7 @@
 
 (defn- validate [{::ds/keys [component-id config system]} schema template & {:keys [pre?]}]
   (let [errors (and schema (m/explain schema config))
-        resolved-template (val/resolve-refs system template)
+        resolved-template (val/resolve-refs system component-id template)
         {:keys [lint?]} config]
     (cond
       errors {:errors errors
