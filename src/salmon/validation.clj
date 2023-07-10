@@ -49,7 +49,7 @@
   [system referencing-component-id x]
   (sp/transform (sp/walker ds/ref?) (partial resolve-ref system referencing-component-id) x))
 
-(defn- ref-resolveable? [system component-id ref]
+(defn- ref-resolveable? [system referencing-component-id ref]
   (let [{::ds/keys [instances resolved-defs]} system
         rt (ds/ref-type ref)
         rkey (cond
@@ -57,7 +57,7 @@
                (take 2 (ds/ref-key ref))
 
                (= ::ds/local-ref rt)
-               (into [(first component-id)]
+               (into [(first referencing-component-id)]
                      (ds/ref-key ref))
 
                :else
@@ -70,5 +70,5 @@
 (defn refs-resolveable?
   "Returns true if all refs refer to either started services or constant
    values."
-  [system component-id x]
-  (every? (partial ref-resolveable? system component-id) (refs x)))
+  [system referencing-component-id x]
+  (every? (partial ref-resolveable? system referencing-component-id) (refs x)))
