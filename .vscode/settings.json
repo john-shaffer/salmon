@@ -3,11 +3,14 @@
   "calva.replConnectSequences": [
     {
       "afterCLJReplJackInCode": "(require 'hashp.core)",
+      "autoSelectForConnect": true,
+      "autoSelectForJackIn": true,
       "cljsType": "none",
       "menuSelections": {
         "cljAliases": ["test"]
       },
       "name": "Salmon",
+      "projectRootPath": ["."],
       "projectType": "deps.edn"
     }
   ],
