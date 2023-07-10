@@ -9,7 +9,7 @@
 (def system-base
   {::ds/base {:salmon/early-validate sig/early-validate-conf}
    ::ds/signals
-   {:salmon/delete {:order :topsort :signal-type :lifecycle}
+   {:salmon/delete {:order :topsort :returns-instance? true}
     :salmon/early-validate {:order :reverse-topsort}
     ::ds/validate {:order :reverse-topsort}}})
 
