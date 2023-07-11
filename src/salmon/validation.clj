@@ -45,7 +45,8 @@
       def (::ds/start (get-in def (drop 2 rkey))))))
 
 (defn resolve-refs
-  "Resolve all refs in x."
+  "Resolve all refs in x that refer to either started services or constant
+   values."
   [system referencing-component-id x]
   (sp/transform (sp/walker ds/ref?) (partial resolve-ref system referencing-component-id) x))
 
