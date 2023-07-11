@@ -199,6 +199,16 @@
           "Outputs are correct")
       (sig/delete! sys))))
 
+(deftest test-describe-stack-raw
+  (let [stack-name (rand-stack-name)
+        sys (sig/start! (system-a (stack-a :capabilities #{"CAPABILITY_NAMED_IAM"} :name stack-name :template template-a)))]
+    (testing "Raw stack description is retrieved and attached to the stack-properties instance"
+      (is (= ["CAPABILITY_NAMED_IAM"]
+             (->> sys ::ds/instances :services :stack-a :describe-stack-raw :Capabilities)))
+      (is (inst?
+           (->> sys ::ds/instances :services :stack-a :describe-stack-raw :CreationTime))))
+    (sig/delete! sys)))
+
 (deftest test-outputs
   (let [stack-name (rand-stack-name)
         template (assoc template-a :Outputs
@@ -305,7 +315,8 @@
         system (atom nil)]
     (testing ":start works"
       (reset! system (sig/start! (system-b
-                                  (stack-a :lint? true
+                                  (stack-a :capabilities #{"CAPABILITY_NAMED_IAM"}
+                                           :lint? true
                                            :name stack-name
                                            :parameters {:Username "User1"}
                                            :template template)
@@ -319,6 +330,11 @@
              (->> @system ::ds/instances :services :stack-properties-a :resources
                   (map :LogicalResourceId) set))
           "Resources are retrieved and attached to the stack-properties instance")
+      (testing "Raw stack description is retrieved and attached to the stack-properties instance"
+        (is (= ["CAPABILITY_NAMED_IAM"]
+               (->> @system ::ds/instances :services :stack-properties-a :describe-stack-raw :Capabilities)))
+        (is (inst?
+             (->> @system ::ds/instances :services :stack-properties-a :describe-stack-raw :CreationTime))))
       (is (= {:Username "User1"}
              (->> @system ::ds/instances :services :stack-properties-a :parameters))
           "Parameters are retrieved and attached to the stack-properties instance")

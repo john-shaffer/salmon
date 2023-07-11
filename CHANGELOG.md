@@ -5,6 +5,8 @@
   `referencing-component-id` argument so that it can handle local-refs. 
 - Add `:parameters` and `:parameters-raw` maps to stack and stack-properties
   instances.
+- Add `:describe-stack-raw` to stack and stack-properties instances. This provides
+  access to the raw DescribeStack response.
 
 ## v0.9.0 (2023-07-08)
 

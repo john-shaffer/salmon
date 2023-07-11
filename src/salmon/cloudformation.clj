@@ -205,6 +205,7 @@
       (let [outputs-raw (-> describe-r :Outputs outputs-map-raw)
             parameters-raw (-> describe-r :Parameters parameters-map-raw)]
         {:client client
+         :describe-stack-raw describe-r
          :name stack-name
          :outputs (me/map-vals :OutputValue outputs-raw)
          :outputs-raw outputs-raw
