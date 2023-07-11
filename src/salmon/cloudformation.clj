@@ -169,12 +169,12 @@
    {}
    outputs-seq))
 
-(defn- get-outputs-raw [client stack-name-or-id]
+(defn- describe-stack [client stack-name-or-id]
   (let [r (aws/invoke client {:op :DescribeStacks
                               :request {:StackName stack-name-or-id}})]
     (if (anomaly? r)
       r
-      (-> r :Stacks first :Outputs outputs-map-raw))))
+      (-> r :Stacks first))))
 
 (defn- get-resources [client stack-name-or-id]
   (let [r (get-all-pages client {:op :ListStackResources
@@ -185,22 +185,23 @@
 
 (defn- stack-instance [{:keys [->error]} client stack-name stack-id]
   (let [resources (get-resources client stack-id)
-        outputs-raw (when-not (anomaly? resources)
-                      (get-outputs-raw client stack-id))]
+        describe-r (when-not (anomaly? resources)
+                     (describe-stack client stack-id))]
     (cond
       (anomaly? resources)
       (->error (response-error "Error getting resources" resources))
 
-      (anomaly? outputs-raw)
-      (->error (response-error "Error getting outputs" outputs-raw))
+      (anomaly? describe-r)
+      (->error (response-error "Error getting stack description" describe-r))
 
       :else
-      {:client client
-       :name stack-name
-       :outputs (me/map-vals :OutputValue outputs-raw)
-       :outputs-raw outputs-raw
-       :resources resources
-       :stack-id stack-id})))
+      (let [outputs-raw (-> describe-r :Outputs outputs-map-raw)]
+        {:client client
+         :name stack-name
+         :outputs (me/map-vals :OutputValue outputs-raw)
+         :outputs-raw outputs-raw
+         :resources resources
+         :stack-id stack-id}))))
 
 (defn- start-stack! [{:keys [->error ->validation]
                ::ds/keys [config instance system]
