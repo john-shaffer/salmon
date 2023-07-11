@@ -169,6 +169,13 @@
    {}
    outputs-seq))
 
+(defn- parameters-map-raw [parameters-seq]
+  (reduce
+   (fn [m {:keys [ParameterKey] :as parameter}]
+     (assoc m (keyword ParameterKey) (dissoc parameter :ParameterKey)))
+   {}
+   parameters-seq))
+
 (defn- describe-stack [client stack-name-or-id]
   (let [r (aws/invoke client {:op :DescribeStacks
                               :request {:StackName stack-name-or-id}})]
@@ -195,11 +202,14 @@
       (->error (response-error "Error getting stack description" describe-r))
 
       :else
-      (let [outputs-raw (-> describe-r :Outputs outputs-map-raw)]
+      (let [outputs-raw (-> describe-r :Outputs outputs-map-raw)
+            parameters-raw (-> describe-r :Parameters parameters-map-raw)]
         {:client client
          :name stack-name
          :outputs (me/map-vals :OutputValue outputs-raw)
          :outputs-raw outputs-raw
+         :parameters (me/map-vals :ParameterValue parameters-raw)
+         :parameters-raw parameters-raw
          :resources resources
          :stack-id stack-id}))))
 
@@ -333,7 +343,7 @@
 (defn stack-properties
   "Returns a component that describes an existing CloudFormation
    stack's properties. Properties include the stack's resources,
-   and outputs.
+   outputs, and parameters.
 
    Supported signals: ::ds/start, ::ds/stop
 

@@ -3,6 +3,8 @@
 - Fix incorrect resolution of local-refs.
 - (breaking) `salmon.validation/resolve-refs` now takes a 
   `referencing-component-id` argument so that it can handle local-refs. 
+- Add `:parameters` and `:parameters-raw` maps to stack and stack-properties
+  instances.
 
 ## v0.9.0 (2023-07-08)
 

@@ -276,6 +276,10 @@
       (is (= ["User1"]
              (->> sys ::ds/instances :services :stack-a :resources
                   (map :LogicalResourceId))))
+      (is (= {:Username {:ParameterValue "User1"}}
+             (->> sys ::ds/instances :services :stack-a :parameters-raw)))
+      (is (= {:Username "User1"}
+             (->> sys ::ds/instances :services :stack-a :parameters)))
       (sig/delete! sys))))
 
 (deftest test-stack-properties-validation
@@ -289,15 +293,21 @@
 
 (deftest test-stack-properties
   (let [stack-name (rand-stack-name)
-        template (assoc template-b :Outputs
+        template (assoc template-b
+                        :Parameters
+                        {:Username {:Description "Username" :Type "String"}}
+                        :Outputs
                         {"OUT1" {:Value "1" :Export {:Name (str stack-name "-OUT1")}
                                  :Description "OUT1 desc"}
-                         "OUT2" {:Value "2" :Export {:Name (str stack-name "-OUT2")}}})
+                         "OUT2" {:Value "2" :Export {:Name (str stack-name "-OUT2")}}
+                         ;; We have to use the parameter to pass linting
+                         "Username" {:Value {:Ref "Username"} :Export {:Name (str stack-name "-Username")}}})
         system (atom nil)]
     (testing ":start works"
       (reset! system (sig/start! (system-b
                                   (stack-a :lint? true
                                            :name stack-name
+                                           :parameters {:Username "User1"}
                                            :template template)
                                   (stack-properties-a))))
       (is (-> @system ::ds/instances :services :stack-properties-a))
@@ -309,12 +319,19 @@
              (->> @system ::ds/instances :services :stack-properties-a :resources
                   (map :LogicalResourceId) set))
           "Resources are retrieved and attached to the stack-properties instance")
-      (is (= {:OUT1 "1" :OUT2 "2"}
+      (is (= {:Username "User1"}
+             (->> @system ::ds/instances :services :stack-properties-a :parameters))
+          "Parameters are retrieved and attached to the stack-properties instance")
+      (is (= {:Username {:ParameterValue "User1"}}
+             (->> @system ::ds/instances :services :stack-properties-a :parameters-raw))
+          "Parameters are retrieved and attached to the stack-properties instance")
+      (is (= {:OUT1 "1" :OUT2 "2" :Username "User1"}
              (->> @system ::ds/instances :services :stack-properties-a :outputs))
           "Outputs are retrieved and attached to the stack-properties instance")
       (is (= {:OUT1 {:OutputValue "1" :ExportName (str stack-name "-OUT1")
                      :Description "OUT1 desc"}
-              :OUT2 {:OutputValue "2" :ExportName (str stack-name "-OUT2")}}
+              :OUT2 {:OutputValue "2" :ExportName (str stack-name "-OUT2")}
+              :Username {:OutputValue "User1" :ExportName (str stack-name "-Username")}}
              (->> @system ::ds/instances :services :stack-properties-a :outputs-raw))
           "Outputs are retrieved and attached to the stack-properties instance")
       (testing ":stop works"
