@@ -7,6 +7,7 @@
   instances.
 - Add `:describe-stack-raw` to stack and stack-properties instances. This provides
   access to the raw DescribeStack response.
+- Fix missing part of error message in `salmon.signal` fns.
 
 ## v0.9.0 (2023-07-08)
 

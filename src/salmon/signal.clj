@@ -31,14 +31,14 @@
       (seq error)
       (throw (ex-info
               (str "Error during " signal-name
-                   (some->> error :services first val :message
+                   (some->> error first val first val :message
                             first-line (str ": ")))
               out))
 
       (seq validation)
       (throw (ex-info
               (str "Validation failed during " signal-name
-                   (some->> validation :services first val :message
+                   (some->> validation first val first val :message
                             first-line (str ": ")))
               out))
 
