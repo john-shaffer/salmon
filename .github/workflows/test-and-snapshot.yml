@@ -53,9 +53,3 @@ jobs:
 
       - name: Run tests and build jar
         run: nix develop -c clojure -T:build ci :snapshot true
-
-      - name: Copy pom.xml for CljDoc
-        run: cp template/pom.xml .
-
-      - name: Check that CljDoc can analyze the jar
-        uses: cljdoc/cljdoc-check-action@v0.0.3
