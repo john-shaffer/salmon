@@ -150,17 +150,20 @@
       (anomaly? r) r
       :else (update-stack! client request stack-id))))
 
+(defn- pages-seq [client op-map & [next-token]]
+  (lazy-seq
+   (let [op-map (if next-token
+                  (assoc-in op-map [:request :NextToken] next-token)
+                  op-map)
+         {:keys [NextToken] :as r} (aws/invoke client op-map)]
+     (if NextToken
+       (cons r (pages-seq client op-map next-token))
+       (list r)))))
+
 (defn- get-all-pages [client op-map]
-  (loop [responses []
-         next-token nil]
-    (let [op-map (if next-token
-                   (assoc-in op-map [:request :NextToken] next-token)
-                   op-map)
-          {:keys [NextToken] :as r} (aws/invoke client op-map)]
-      (cond
-        (anomaly? r) r
-        NextToken (recur (conj responses r) NextToken)
-        :else (conj responses r)))))
+  (let [pages (pages-seq client op-map)]
+    (or (first (filter anomaly? pages))
+        (vec pages))))
 
 (defn- outputs-map-raw [outputs-seq]
   (reduce
