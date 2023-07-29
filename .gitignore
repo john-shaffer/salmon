@@ -1,9 +1,9 @@
-.cache/
-.calva/
-.clj-kondo/
-.cpcache/
-.direnv/
-.nrepl-port
+.*
+!.editorconfig
+!.envrc
+!.github
+!.gitignore
+!.vscode
 development/src/dev/
 gcroots
 target/
