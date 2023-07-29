@@ -22,6 +22,7 @@
                       ::ds/stop (fn [_])}
                :empty {::ds/start (constantly {})}
                :empty-m {::ds/start {}}
+               :nested {::ds/start {:empty {}}}
                :T {::ds/start (constantly :T)}
                :x {::ds/start :X}
                :y {::ds/start "Y!"}
@@ -90,6 +91,9 @@
     (is (sig/early-validate! (system-a (stack-a :lint? true :template {:a (ds/ref [:services :T])}))))))
 
 (deftest test-local-ref-early-validation
+  (testing "Pre-validation linting doesn't run for a local ref to an un-started service"
+    (is (sig/early-validate! (system-a (stack-a :lint? true :template (ds/local-ref [:T])))))
+    (is (sig/early-validate! (system-a (stack-a :lint? true :template (ds/local-ref [:T :dne]))))))
   (testing "Local refs should be resolved and their values validated during early-validate!"
     (is (thrown-with-msg?
          ExceptionInfo
@@ -98,7 +102,12 @@
     (is (thrown-with-msg?
          ExceptionInfo
          #"Validation failed during :salmon/early-validate: Template must be a map"
-         (sig/early-validate! (system-a (stack-a :lint? true :template (ds/local-ref [:x]))))))))
+         (sig/early-validate! (system-a (stack-a :lint? true :template (ds/local-ref [:x]))))))
+    (is (thrown-with-msg?
+         ExceptionInfo
+         #"Validation failed during :salmon/early-validate: E1001 Top level template section a is not valid"
+         (sig/early-validate! (system-a (stack-a :lint? true :template {:a (ds/local-ref [:nested :empty])}))))
+        "Deep local ref")))
 
 (deftest test-validation-linting
   (testing "ref templates are validated during :start"

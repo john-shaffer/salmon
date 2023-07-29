@@ -1,5 +1,7 @@
 ## Unreleased
 
+- Fix incorrect resolution of local-refs (again).
+
 ## v0.10.0 (2023-07-28)
 
 - Fix incorrect resolution of local-refs.

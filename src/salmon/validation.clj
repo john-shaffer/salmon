@@ -25,19 +25,22 @@
 (defn- refs [x]
   (sp/select (sp/walker ds/ref?) x))
 
+(defn- get-ref-path [referencing-component-id ref]
+  (let [rt (ds/ref-type ref)]
+    (cond
+      (= ::ds/ref rt)
+      (ds/ref-key ref)
+
+      (= ::ds/local-ref rt)
+      (into [(first referencing-component-id)]
+            (ds/ref-key ref))
+
+      :else
+      (throw (ex-info "Not a ref" {:value ref})))))
+
 (defn- resolve-ref [system referencing-component-id ref]
   (let [{::ds/keys [instances resolved-defs]} system
-        rt (ds/ref-type ref)
-        rkey (cond
-               (= ::ds/ref rt)
-               (take 2 (ds/ref-key ref))
-
-               (= ::ds/local-ref rt)
-               (into [(first referencing-component-id)]
-                     (ds/ref-key ref))
-
-               :else
-               (throw (ex-info "Not a ref" {:value ref})))
+        rkey (get-ref-path referencing-component-id ref)
         instance (get-in instances rkey)
         def (get-in resolved-defs rkey)]
     (cond
@@ -52,17 +55,7 @@
 
 (defn- ref-resolveable? [system referencing-component-id ref]
   (let [{::ds/keys [instances resolved-defs]} system
-        rt (ds/ref-type ref)
-        rkey (cond
-               (= ::ds/ref rt)
-               (take 2 (ds/ref-key ref))
-
-               (= ::ds/local-ref rt)
-               (into [(first referencing-component-id)]
-                     (ds/ref-key ref))
-
-               :else
-               (throw (ex-info "Not a ref" {:value ref})))]
+        rkey (take 2 (get-ref-path referencing-component-id ref))]
     (boolean
      (or
       (get-in instances rkey)
