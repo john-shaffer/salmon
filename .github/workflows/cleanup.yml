@@ -10,33 +10,11 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Restore cached Nix store
-        id: nix-cache-restore
-        uses: john-shaffer/cache/restore@main
-        with:
-          key: nix-${{ github.repository }}-${{ runner.os }}-${{ hashFiles('**.nix', '**/flake.lock') }}
-          restore-keys: |
-            nix-${{ github.repository }}-${{ runner.os }}-
-          path: |
-            /nix/store
-            /nix/var/nix/db/db.sqlite
-
       - name: Install Nix
-        uses: cachix/install-nix-action@v22
+        uses: DeterminateSystems/nix-installer-action@v4
 
-      - name: Build Nix derivations
-        if: steps.nix-cache-restore.outputs.cache-hit != 'true'
-        run: |
-          nix develop -c echo OK
-
-      - name: Save cached Nix store
-        if: steps.nix-cache-restore.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v3
-        with:
-          key: nix-${{ github.repository }}-${{ runner.os }}-${{ hashFiles('**.nix', '**/flake.lock') }}
-          path: |
-            /nix/store
-            /nix/var/nix/db/db.sqlite
+      - name: Use the Magic Nix Cache
+        uses: DeterminateSystems/magic-nix-cache-action@v2
 
       - name: Restore cached Clojure dependencies
         id: clj-cache-restore
