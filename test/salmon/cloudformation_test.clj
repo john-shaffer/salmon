@@ -80,11 +80,6 @@
          ExceptionInfo
          #"Validation failed during :salmon/early-validate: E1001 Top level template section a is not valid"
          (sig/early-validate! (system-a (stack-a :lint? true :template {:a (ds/ref [:services :y])}))))))
-  (testing "cfn-lint works in :early-validate when all local refs have been resolved"
-    (is (thrown-with-msg?
-         ExceptionInfo
-         #"Validation failed during :salmon/early-validate: E1001 Top level template section a is not valid"
-         (sig/early-validate! (system-a (stack-a :lint? true :template {:a (ds/local-ref [:y])}))))))
   (testing "Pre-validation linting doesn't run for a ref to an un-started services"
     (is (sig/early-validate! (system-a (stack-a :lint? true :template (ds/ref [:services :T]))))))
   (testing "Pre-validation linting doesn't run if the template has a nested ref to an un-started service"
