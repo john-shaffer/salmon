@@ -7,7 +7,7 @@
         com.rpl/specter {:mvn/version "1.1.4"}
         medley/medley {:mvn/version "1.4.0"}
         org.clojure/data.json {:mvn/version "2.4.0"}
-        party.donut/system {:mvn/version "0.0.204"
+        party.donut/system {:mvn/version "0.0.208"
                             :exclusions [tailrecursion/cljs-priority-map]}}
  :aliases
  {:antq
