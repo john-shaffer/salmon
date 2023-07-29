@@ -1,5 +1,7 @@
 ## Unreleased
 
+## v0.10.0 (2023-07-28)
+
 - Fix incorrect resolution of local-refs.
 - (breaking) `salmon.validation/resolve-refs` now takes a 
   `referencing-component-id` argument so that it can handle local-refs. 
