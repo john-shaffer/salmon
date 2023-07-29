@@ -1,12 +1,9 @@
-name: Test & Snapshot
+name: Test & Build
 
-on:
-  push:
-    branches:
-      - master
+on: [push]
 
 jobs:
-  test-and-snapshot:
+  test-and-build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
