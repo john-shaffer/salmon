@@ -1,0 +1,13 @@
+{
+  "rule_sets" : [ {
+    "matching_content_path": "**/test/**",
+    "matching_content_path_doc": "Allow tests to be lengthy as long as they are otherwise simple.",
+    "thresholds" : [ {
+      "name" : "function_lines_of_code_alert",
+      "value" : 1000
+    }, {
+      "name" : "function_lines_of_code_warning",
+      "value" : 200
+    } ]
+  } ]
+}

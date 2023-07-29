@@ -1,4 +1,5 @@
 .*
+!.codescene
 !.editorconfig
 !.envrc
 !.github
