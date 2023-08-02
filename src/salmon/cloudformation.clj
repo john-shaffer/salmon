@@ -193,6 +193,13 @@
       r
       (mapcat :StackResourceSummaries r))))
 
+(defn- resources-map [raw-resources]
+  (reduce
+   (fn [m {:as resource :keys [LogicalResourceId]}]
+     (assoc m (keyword LogicalResourceId) (dissoc resource :LogicalResourceId)))
+   {}
+   raw-resources))
+
 (defn- stack-instance [{:keys [->error]} client stack-name stack-id]
   (let [resources (get-resources client stack-id)
         describe-r (when-not (anomaly? resources)
@@ -214,7 +221,7 @@
          :outputs-raw outputs-raw
          :parameters (me/map-vals :ParameterValue parameters-raw)
          :parameters-raw parameters-raw
-         :resources resources
+         :resources (resources-map resources)
          :stack-id stack-id}))))
 
 (defn- start-stack! [{:keys [->error ->validation]

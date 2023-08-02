@@ -181,9 +181,9 @@
     (reset! sys (sig/start! (system-a (stack-a :name name :template template-a))))
     (testing "Template update works during :start"
       (reset! sys (sig/start! (system-a (stack-a :name name :template template-b))))
-      (is (= #{"OAI1" "OAI2"}
+      (is (= #{:OAI1 :OAI2}
              (->> @sys ::ds/instances :services :stack-a :resources
-                  (map :LogicalResourceId) set))))
+                  keys set))))
     (sig/delete! @sys)))
 
 (deftest test-no-change-start
@@ -194,9 +194,8 @@
           sys (system-a (stack-a :name stack-name :template template))
           _ (sig/start! sys)
           sys (sig/start! sys)]
-      (is (= ["OAI1"]
-             (->> sys ::ds/instances :services :stack-a :resources
-                  (map :LogicalResourceId)))
+      (is (= [:OAI1]
+             (->> sys ::ds/instances :services :stack-a :resources keys))
           "Resources are correct")
       (is (= {:OUT1 "1"}
              (->> sys ::ds/instances :services :stack-a :outputs))
@@ -232,10 +231,15 @@
 
 (deftest test-resources
   (let [sys (sig/start! (system-a (stack-a :template template-b)))]
-    (is (= #{"OAI1" "OAI2"}
+    (is (= #{:OAI1 :OAI2}
            (->> sys ::ds/instances :services :stack-a :resources
-                (map :LogicalResourceId) set))
+                keys set))
         "Resources are retrieved and attached to the stack instance")
+    (is (= #{:DriftInformation :LastUpdatedTimestamp :PhysicalResourceId
+             :ResourceStatus :ResourceType}
+           (->> sys ::ds/instances :services :stack-a :resources
+                vals (mapcat keys) set))
+        "Resource maps have the expected keys")
     (sig/delete! sys)))
 
 (deftest test-aws-error-messages
@@ -268,9 +272,8 @@
     (let [sys (sig/start! (system-a (stack-a
                                      :capabilities #{"CAPABILITY_NAMED_IAM"}
                                      :template template)))]
-      (is (= ["User1"]
-             (->> sys ::ds/instances :services :stack-a :resources
-                  (map :LogicalResourceId))))
+      (is (= [:User1]
+             (->> sys ::ds/instances :services :stack-a :resources keys)))
       (sig/delete! sys))))
 
 (deftest test-parameters
@@ -287,9 +290,8 @@
                                      :capabilities #{"CAPABILITY_NAMED_IAM"}
                                      :parameters {:Username "User1"}
                                      :template template)))]
-      (is (= ["User1"]
-             (->> sys ::ds/instances :services :stack-a :resources
-                  (map :LogicalResourceId))))
+      (is (= [:User1]
+             (->> sys ::ds/instances :services :stack-a :resources keys)))
       (is (= {:Username {:ParameterValue "User1"}}
              (->> sys ::ds/instances :services :stack-a :parameters-raw)))
       (is (= {:Username "User1"}
@@ -330,9 +332,9 @@
         (let [start (System/nanoTime)]
           (is (= (::ds/instances @system) (::ds/instances (sig/start! @system))))
           (is (> 30 (quot (- (System/nanoTime) start) 1000000)))))
-      (is (= #{"OAI1" "OAI2"}
+      (is (= #{:OAI1 :OAI2}
              (->> @system ::ds/instances :services :stack-properties-a :resources
-                  (map :LogicalResourceId) set))
+                  keys set))
           "Resources are retrieved and attached to the stack-properties instance")
       (testing "Raw stack description is retrieved and attached to the stack-properties instance"
         (is (= ["CAPABILITY_NAMED_IAM"]

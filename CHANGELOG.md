@@ -1,5 +1,9 @@
 ## Unreleased
 
+- (breaking) Change the format of a stack's `:resources` from a seq to a map with
+  each resource's LogicalResourceId as keys. This allows individual resources to be
+  the target of donut.system refs.
+  (e.g., `(ds/local-ref [:MyStack :resources :MyBucket :PhysicalResourceId])`)
 ## v0.10.1 (2023-07-29)
 
 - Fix incorrect resolution of local-refs (again).
