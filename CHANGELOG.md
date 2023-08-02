@@ -1,5 +1,7 @@
 ## Unreleased
 
+## v0.11.0 (2023-08-01)
+
 - (breaking) Change the format of a stack's `:resources` from a seq to a map with
   each resource's LogicalResourceId as keys. This allows individual resources to be
   the target of donut.system refs.
