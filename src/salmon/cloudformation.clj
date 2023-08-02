@@ -227,7 +227,7 @@
 (defn- start-stack! [{:keys [->error ->validation]
                ::ds/keys [config instance system]
                :as signal}]
-  (let [{:keys [template]} config
+  (let [{:keys [region template]} config
         {:keys [client]} instance
         schema (-> system ::ds/component-def :schema)
         errors (when-not client
@@ -236,7 +236,8 @@
       client instance
       errors (->validation errors)
       :else
-      (let [client (aws/client {:api :cloudformation})
+      (let [client (or (:client config)
+                       (aws/client {:api :cloudformation :region region}))
             r (cou-stack! client signal (:json (template-data :template template)))]
         (if (anomaly? r)
           (->error (response-error "Error creating stack" r))
@@ -276,6 +277,10 @@
      \"CAPABILITY_IAM\"
      \"CAPABILITY_NAMED_IAM\"}
 
+   :client
+   An AWS client as produced by
+   `cognitect.aws.client.api/client`
+
    :lint?
    Validate the template using cfn-lint.
    Default: false.
@@ -283,6 +288,10 @@
    :name
    The name of the CloudFormation stack. Must match the
    regex #\"^[a-zA-Z][-a-zA-Z0-9]{0,127}$\"
+
+   :region
+   The AWS region to deploy the stack in. Ignored when
+   :client is present.
 
    :template
    A map representing a CloudFormation template. The map
@@ -336,7 +345,8 @@
 (defn- start-stack-properties! [{:keys [->error ->validation]
                                  ::ds/keys [config instance system]
                                  :as signal}]
-  (let [{:keys [client]} instance
+  (let [{:keys [region]} config
+        {:keys [client]} instance
         schema (-> system ::ds/component-def :schema)
         errors (when-not client
                  (and schema (m/explain schema config)))]
@@ -344,7 +354,8 @@
       client instance
       errors (->validation errors)
       :else
-      (let [client (aws/client {:api :cloudformation})
+      (let [client (or (:client config)
+                       (aws/client {:api :cloudformation :region region}))
             r (get-stack-properties! client signal)]
         (if (anomaly? r)
           (->error (response-error "Error creating stack" r))
@@ -360,9 +371,16 @@
 
    config options:
 
+   :client
+   An AWS client as produced by
+   `cognitect.aws.client.api/client`
+
    :name
    The name of the CloudFormation stack. Must match the
-   regex #\"^[a-zA-Z][-a-zA-Z0-9]{0,127}$\""
+   regex #\"^[a-zA-Z][-a-zA-Z0-9]{0,127}$\"
+
+   :region
+   The AWS region of the stack. Ignored when :client is present."
   [& {:as config}]
   {::ds/config config
    ::ds/start start-stack-properties!

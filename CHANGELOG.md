@@ -1,5 +1,8 @@
 ## Unreleased
 
+- Add `:client` and `:region` options to stack and stack-properties
+  components.
+
 ## v0.11.0 (2023-08-01)
 
 - (breaking) Change the format of a stack's `:resources` from a seq to a map with
