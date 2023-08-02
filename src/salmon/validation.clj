@@ -42,8 +42,11 @@
   (let [{::ds/keys [instances resolved-defs]} system
         rkey (get-ref-path referencing-component-id ref)
         instance (get-in instances rkey)
-        def (get-in resolved-defs rkey)]
+        {:as def ::ds/keys [resolve-refs]} (get-in resolved-defs rkey)]
     (cond
+      resolve-refs (-> (resolve-refs system (take 2 rkey))
+                       ::ds/resolved-defs
+                       (get-in rkey))
       instance (get-in instance (drop 2 rkey))
       def (::ds/start (get-in def (drop 2 rkey))))))
 
@@ -54,10 +57,12 @@
   (sp/transform (sp/walker ds/ref?) (partial resolve-ref system referencing-component-id) x))
 
 (defn- ref-resolveable? [system referencing-component-id ref]
-  (let [{::ds/keys [instances resolved-defs]} system
-        rkey (take 2 (get-ref-path referencing-component-id ref))]
+  (let [{::ds/keys [defs instances resolved-defs]} system
+        rkey (take 2 (get-ref-path referencing-component-id ref))
+        resolution-fn (ds/flat-get-in defs [rkey ::ds/resolve-refs])]
     (boolean
      (or
+      resolution-fn
       (get-in instances rkey)
       (some-> resolved-defs (get-in rkey) ::ds/start fn? not)))))
 

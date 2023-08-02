@@ -4,6 +4,9 @@
   each resource's LogicalResourceId as keys. This allows individual resources to be
   the target of donut.system refs.
   (e.g., `(ds/local-ref [:MyStack :resources :MyBucket :PhysicalResourceId])`)
+- Handle custom resolution fns via `:donut.system/resolve-refs`. Custom
+  resolution fns will prevent early validation.
+
 ## v0.10.1 (2023-07-29)
 
 - Fix incorrect resolution of local-refs (again).
