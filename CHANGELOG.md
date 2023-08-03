@@ -4,6 +4,9 @@
   components.
 - Move `anomaly?`, `aws-error-code`, and `aws-message-fns` to `salmon.util`
   and make them public.
+- Add `salmon.route53/fetch-hosted-zone-id` as a simple way to look up
+  which hosted zone id to attach RecordSets and RecordSetGroups to.
+  - Add com.cognitect.aws/route53 as a dependency.
 
 ## v0.11.0 (2023-08-01)
 
