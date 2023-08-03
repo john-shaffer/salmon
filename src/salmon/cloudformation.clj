@@ -217,8 +217,8 @@
          :stack-id stack-id}))))
 
 (defn- start-stack! [{:keys [->error ->validation]
-               ::ds/keys [config instance system]
-               :as signal}]
+                      ::ds/keys [config instance system]
+                      :as signal}]
   (let [{:keys [region template]} config
         {:keys [client]} instance
         schema (-> system ::ds/component-def :schema)
