@@ -8,6 +8,7 @@
             [malli.core :as m]
             [malli.error :as merr]
             [medley.core :as me]
+            [salmon.util :as u]
             [salmon.validation :as val]))
 
 (defn- full-name ^String [x]
@@ -75,18 +76,9 @@
               (when (seq message)
                 {:message message})))))
 
-(defn- anomaly? [response]
-  (boolean (:cognitect.anomalies/category response)))
-
-(defn- aws-error-code [response]
-  (some-> response :ErrorResponse :Error :Code))
-
-(defn- aws-error-message [response]
-  (some-> response :ErrorResponse :Error :Message))
-
 (defn- response-error [message response]
   {:message (str message
-                 (some->> response aws-error-message (str ": ")))
+                 (some->> response u/aws-error-message (str ": ")))
    :response response})
 
 (defn- aws-parameters [parameters]
@@ -104,7 +96,7 @@
                               :request {:StackName name}})
         status (-> r :Stacks first :StackStatus)]
     (cond
-      (anomaly? r)
+      (u/anomaly? r)
       (->error (response-error "Error getting stack status" r))
 
       (str/ends-with? status "_FAILED")
@@ -121,17 +113,17 @@
 
 (defn- create-stack! [client request]
   (let [r (aws/invoke client {:op :CreateStack :request request})]
-    (if (anomaly? r)
+    (if (u/anomaly? r)
       r
       (:StackId r))))
 
 (defn- update-stack! [client request stack-id]
   (let [request (assoc request :StackName stack-id)
         r (aws/invoke client {:op :UpdateStack :request request})
-        msg (aws-error-message r)]
+        msg (u/aws-error-message r)]
     (cond
       (= "No updates are to be performed." msg) stack-id
-      (anomaly? r) r
+      (u/anomaly? r) r
       :else stack-id)))
 
 (defn cou-stack!
@@ -146,8 +138,8 @@
                               :request {:StackName name}})
         stack-id (some-> r :Stacks first :StackId)]
     (cond
-      (= "ValidationError" (aws-error-code r)) (create-stack! client request)
-      (anomaly? r) r
+      (= "ValidationError" (u/aws-error-code r)) (create-stack! client request)
+      (u/anomaly? r) r
       :else (update-stack! client request stack-id))))
 
 (defn- pages-seq [client op-map & [next-token]]
@@ -162,7 +154,7 @@
 
 (defn- get-all-pages [client op-map]
   (let [pages (pages-seq client op-map)]
-    (or (first (filter anomaly? pages))
+    (or (first (filter u/anomaly? pages))
         (vec pages))))
 
 (defn- outputs-map-raw [outputs-seq]
@@ -182,14 +174,14 @@
 (defn- describe-stack [client stack-name-or-id]
   (let [r (aws/invoke client {:op :DescribeStacks
                               :request {:StackName stack-name-or-id}})]
-    (if (anomaly? r)
+    (if (u/anomaly? r)
       r
       (-> r :Stacks first))))
 
 (defn- get-resources [client stack-name-or-id]
   (let [r (get-all-pages client {:op :ListStackResources
                                  :request {:StackName stack-name-or-id}})]
-    (if (anomaly? r)
+    (if (u/anomaly? r)
       r
       (mapcat :StackResourceSummaries r))))
 
@@ -202,13 +194,13 @@
 
 (defn- stack-instance [{:keys [->error]} client stack-name stack-id]
   (let [resources (get-resources client stack-id)
-        describe-r (when-not (anomaly? resources)
+        describe-r (when-not (u/anomaly? resources)
                      (describe-stack client stack-id))]
     (cond
-      (anomaly? resources)
+      (u/anomaly? resources)
       (->error (response-error "Error getting resources" resources))
 
-      (anomaly? describe-r)
+      (u/anomaly? describe-r)
       (->error (response-error "Error getting stack description" describe-r))
 
       :else
@@ -239,7 +231,7 @@
       (let [client (or (:client config)
                        (aws/client {:api :cloudformation :region region}))
             r (cou-stack! client signal (:json (template-data :template template)))]
-        (if (anomaly? r)
+        (if (u/anomaly? r)
           (->error (response-error "Error creating stack" r))
           (when (wait-until-complete! signal client)
             (stack-instance system client (:name config) r)))))))
@@ -256,7 +248,7 @@
     instance
     (let [r (aws/invoke client {:op :DeleteStack
                                 :request {:StackName name}})]
-      (if (anomaly? r)
+      (if (u/anomaly? r)
         (->error (response-error "Error deleting stack" r))
         (do
           (wait-until-complete! signal client)
@@ -330,7 +322,7 @@
                               :request {:StackName name}})
         status (-> r :Stacks first :StackStatus)]
     (cond
-      (anomaly? r)
+      (u/anomaly? r)
       (->error (response-error "Error getting stack status" r))
 
       (str/ends-with? status "_COMPLETE") true
@@ -357,7 +349,7 @@
       (let [client (or (:client config)
                        (aws/client {:api :cloudformation :region region}))
             r (get-stack-properties! client signal)]
-        (if (anomaly? r)
+        (if (u/anomaly? r)
           (->error (response-error "Error creating stack" r))
           (when (wait-until-creation-complete! signal client)
             (stack-instance system client (:name config) r)))))))

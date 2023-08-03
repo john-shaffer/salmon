@@ -2,6 +2,8 @@
 
 - Add `:client` and `:region` options to stack and stack-properties
   components.
+- Move `anomaly?`, `aws-error-code`, and `aws-message-fns` to `salmon.util`
+  and make them public.
 
 ## v0.11.0 (2023-08-01)
 
