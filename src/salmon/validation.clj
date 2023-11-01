@@ -5,16 +5,16 @@
 
 (defn- allow-refs* [map-entry]
   (mapv
-   (fn [[kw schema conds]]
-     [kw schema
-      [:or
-       ds/Ref
-       ds/LocalRef
-       conds]])
-   map-entry))
+    (fn [[kw schema conds]]
+      [kw schema
+       [:or
+        ds/Ref
+        ds/LocalRef
+        conds]])
+    map-entry))
 
 (defn allow-refs
- "Transform a map schema to allow entries to match either `donut.system/ref?`
+  "Transform a map schema to allow entries to match either `donut.system/ref?`
   or the original schema.
 
   This produces a schema that can be used to do partial validation against
@@ -33,7 +33,7 @@
 
       (= ::ds/local-ref rt)
       (into [(first referencing-component-id)]
-            (ds/ref-key ref))
+        (ds/ref-key ref))
 
       :else
       (throw (ex-info "Not a ref" {:value ref})))))
@@ -45,8 +45,8 @@
         {:as def ::ds/keys [resolve-refs]} (get-in resolved-defs rkey)]
     (cond
       resolve-refs (-> (resolve-refs system (take 2 rkey))
-                       ::ds/resolved-defs
-                       (get-in rkey))
+                     ::ds/resolved-defs
+                     (get-in rkey))
       instance (get-in instance (drop 2 rkey))
       def (::ds/start (get-in def (drop 2 rkey))))))
 
@@ -61,10 +61,10 @@
         rkey (take 2 (get-ref-path referencing-component-id ref))
         resolution-fn (ds/flat-get-in defs [rkey ::ds/resolve-refs])]
     (boolean
-     (or
-      resolution-fn
-      (get-in instances rkey)
-      (some-> resolved-defs (get-in rkey) ::ds/start fn? not)))))
+      (or
+        resolution-fn
+        (get-in instances rkey)
+        (some-> resolved-defs (get-in rkey) ::ds/start fn? not)))))
 
 (defn refs-resolveable?
   "Returns true if all refs refer to either started services or constant

@@ -22,29 +22,31 @@
 
 (defn- get-stacks [client & [next-token]]
   (lazy-seq
-   (Thread/sleep 1000)
-   (let [{:keys [NextToken StackSummaries] :as r}
-         #__ (aws/invoke client {:op :ListStacks
-                                 :request (cond->
-                                           {:StackStatusFilter deleteable-statuses}
-                                            next-token (assoc :NextToken next-token))})]
-     (if (anomaly? r)
-       (throw (ex-info "Error getting stacks" {:response r}))
-       (concat
-        StackSummaries
-        (when NextToken
-          (get-stacks client NextToken)))))))
+    (Thread/sleep 1000)
+    (let [{:keys [NextToken StackSummaries] :as r}
+          #__ (aws/invoke client
+                {:op :ListStacks
+                 :request (cond->
+                            {:StackStatusFilter deleteable-statuses}
+                            next-token (assoc :NextToken next-token))})]
+      (if (anomaly? r)
+        (throw (ex-info "Error getting stacks" {:response r}))
+        (concat
+          StackSummaries
+          (when NextToken
+            (get-stacks client NextToken)))))))
 
 (defn- wait-until-complete! [client stack-name]
-  (let [r (aws/invoke client {:op :DescribeStacks
-                              :request {:StackName stack-name}})
+  (let [r (aws/invoke client
+            {:op :DescribeStacks
+             :request {:StackName stack-name}})
         status (-> r :Stacks first :StackStatus)]
     (cond
       (anomaly? r) (log/error "Error checking stack status" stack-name r)
       (= "DELETE_COMPLETE" status) (log/info "Stack deleted" stack-name)
 
       (or (str/ends-with? status "_COMPLETE")
-          (str/ends-with? status "_FAILED"))
+        (str/ends-with? status "_FAILED"))
       (log/info "Failed to delete stack" stack-name {:status status})
 
       :else
@@ -56,8 +58,9 @@
   (let [stack-ids (mapv :StackId (get-stacks client))]
     (log/info "Found" (count stack-ids) "stacks")
     (doseq [stack-id stack-ids]
-      (let [r (aws/invoke client {:op :DeleteStack
-                                  :request {:StackName stack-id}})]
+      (let [r (aws/invoke client
+                {:op :DeleteStack
+                 :request {:StackName stack-id}})]
         (if (anomaly? r)
           (log/error "Failed to request stack deletion" stack-id r)
           (log/info "Deleting stack" stack-id))
@@ -68,8 +71,8 @@
 
 #_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
 (defn delete-all!
-   "Deletes all CloudFormation stacks.
-   
+  "Deletes all CloudFormation stacks.
+
    Must pass :confirm? true."
   [& {:keys [confirm?]}]
   (if confirm?

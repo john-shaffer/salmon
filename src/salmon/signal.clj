@@ -5,7 +5,7 @@
             [malli.error :as merr]))
 
 (defn early-validate-conf
- "Handles :salmon/early-validate signal by validating `conf` against the schema
+  "Handles :salmon/early-validate signal by validating `conf` against the schema
   in the `:salmon/early-schema` entry of the component definition. Does nothing if
   there is no such entry."
   [{:keys [->validation] ::ds/keys [config system]}]
@@ -30,17 +30,17 @@
     (cond
       (seq error)
       (throw (ex-info
-              (str "Error during " signal-name
-                   (some->> error first val first val :message
-                            first-line (str ": ")))
-              out))
+               (str "Error during " signal-name
+                 (some->> error first val first val :message
+                   first-line (str ": ")))
+               out))
 
       (seq validation)
       (throw (ex-info
-              (str "Validation failed during " signal-name
-                   (some->> validation first val first val :message
-                            first-line (str ": ")))
-              out))
+               (str "Validation failed during " signal-name
+                 (some->> validation first val first val :message
+                   first-line (str ": ")))
+               out))
 
       :else system)))
 

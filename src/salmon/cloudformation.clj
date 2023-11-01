@@ -17,7 +17,7 @@
     (simple-ident? x) (name x)
     (ident? x) (str (namespace x) \/ (name x))
     :else (throw (ex-info "full-name argument must be a String, Keyword, or Symbol"
-                          {:arg x}))))
+                   {:arg x}))))
 
 (def ^{:doc "A regular expression for allowed CloudFormation stack names"}
   re-stack-name
@@ -35,7 +35,7 @@
           :else (str err out))))))
 
 (defn- template-data [& {:keys [template validate?]
-                        :or {validate? true}}]
+                         :or {validate? true}}]
   (let [template-json (json/write-str template)]
     (if-let [errors (and validate? (cfn-lint! template-json))]
       {:json template-json
@@ -78,15 +78,15 @@
 
 (defn- response-error [message response]
   {:message (str message
-                 (some->> response u/aws-error-message (str ": ")))
+              (some->> response u/aws-error-message (str ": ")))
    :response response})
 
 (defn- aws-parameters [parameters]
   (mapv
-   (fn [[k v]]
-     {:ParameterKey (full-name k)
-      :ParameterValue v})
-   parameters))
+    (fn [[k v]]
+      {:ParameterKey (full-name k)
+       :ParameterValue v})
+    parameters))
 
 (defn- wait-until-complete!
   [{:keys [->error] :as signal
@@ -144,32 +144,32 @@
 
 (defn- pages-seq [client op-map & [next-token]]
   (lazy-seq
-   (let [op-map (if next-token
-                  (assoc-in op-map [:request :NextToken] next-token)
-                  op-map)
-         {:keys [NextToken] :as r} (aws/invoke client op-map)]
-     (if NextToken
-       (cons r (pages-seq client op-map next-token))
-       (list r)))))
+    (let [op-map (if next-token
+                   (assoc-in op-map [:request :NextToken] next-token)
+                   op-map)
+          {:keys [NextToken] :as r} (aws/invoke client op-map)]
+      (if NextToken
+        (cons r (pages-seq client op-map next-token))
+        (list r)))))
 
 (defn- get-all-pages [client op-map]
   (let [pages (pages-seq client op-map)]
     (or (first (filter u/anomaly? pages))
-        (vec pages))))
+      (vec pages))))
 
 (defn- outputs-map-raw [outputs-seq]
   (reduce
-   (fn [m {:keys [OutputKey] :as output}]
-     (assoc m (keyword OutputKey) (dissoc output :OutputKey)))
-   {}
-   outputs-seq))
+    (fn [m {:keys [OutputKey] :as output}]
+      (assoc m (keyword OutputKey) (dissoc output :OutputKey)))
+    {}
+    outputs-seq))
 
 (defn- parameters-map-raw [parameters-seq]
   (reduce
-   (fn [m {:keys [ParameterKey] :as parameter}]
-     (assoc m (keyword ParameterKey) (dissoc parameter :ParameterKey)))
-   {}
-   parameters-seq))
+    (fn [m {:keys [ParameterKey] :as parameter}]
+      (assoc m (keyword ParameterKey) (dissoc parameter :ParameterKey)))
+    {}
+    parameters-seq))
 
 (defn- describe-stack [client stack-name-or-id]
   (let [r (aws/invoke client {:op :DescribeStacks
@@ -187,10 +187,10 @@
 
 (defn- resources-map [raw-resources]
   (reduce
-   (fn [m {:as resource :keys [LogicalResourceId]}]
-     (assoc m (keyword LogicalResourceId) (dissoc resource :LogicalResourceId)))
-   {}
-   raw-resources))
+    (fn [m {:as resource :keys [LogicalResourceId]}]
+      (assoc m (keyword LogicalResourceId) (dissoc resource :LogicalResourceId)))
+    {}
+    raw-resources))
 
 (defn- stack-instance [{:keys [->error]} client stack-name stack-id]
   (let [resources (get-resources client stack-id)
@@ -229,7 +229,7 @@
       errors (->validation errors)
       :else
       (let [client (or (:client config)
-                       (aws/client {:api :cloudformation :region region}))
+                     (aws/client {:api :cloudformation :region region}))
             r (cou-stack! client signal (:json (template-data :template template)))]
         (if (u/anomaly? r)
           (->error (response-error "Error creating stack" r))
@@ -299,10 +299,10 @@
          {::ds/keys [component-def]} ::ds/system
          :as signal}]
      (some-> (validate signal
-                       (:salmon/early-schema component-def)
-                       (-> component-def ::ds/config :template)
-                       :pre? true)
-             ->validation))
+               (:salmon/early-schema component-def)
+               (-> component-def ::ds/config :template)
+               :pre? true)
+       ->validation))
    :schema stack-schema})
 
 (defn- get-stack-properties!
@@ -347,7 +347,7 @@
       errors (->validation errors)
       :else
       (let [client (or (:client config)
-                       (aws/client {:api :cloudformation :region region}))
+                     (aws/client {:api :cloudformation :region region}))
             r (get-stack-properties! client signal)]
         (if (u/anomaly? r)
           (->error (response-error "Error creating stack" r))

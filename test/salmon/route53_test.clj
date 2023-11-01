@@ -6,11 +6,11 @@
 (deftest test-fetch-hosted-zone-id
   (let [client (aws/client {:api :route53})]
     (is (= "Z08609191OFSO5HMA450N"
-           (r53/fetch-hosted-zone-id client "shafferstest.net"))
-        "Exact DNS name lookups work")
+          (r53/fetch-hosted-zone-id client "shafferstest.net"))
+      "Exact DNS name lookups work")
     (is (= "Z08609191OFSO5HMA450N"
-           (r53/fetch-hosted-zone-id client "john.shafferstest.net"))
-        "Subdomain lookups work")
+          (r53/fetch-hosted-zone-id client "john.shafferstest.net"))
+      "Subdomain lookups work")
     (is (= "Z08609191OFSO5HMA450N"
-           (r53/fetch-hosted-zone-id client "a.b.c.shafferstest.net"))
-        "Multiple subdomain lookups work")))
+          (r53/fetch-hosted-zone-id client "a.b.c.shafferstest.net"))
+      "Multiple subdomain lookups work")))

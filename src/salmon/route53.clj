@@ -25,7 +25,7 @@
   (let [{:as response :keys [HostedZones]}
         (->> {:op :ListHostedZonesByName
               :request {:DNSName dns-name :MaxItems 1}}
-             (aws/invoke client))]
+          (aws/invoke client))]
     (cond
       (u/anomaly? response) response
       (seq HostedZones) (-> HostedZones first :Id extract-hosted-zone-id)
