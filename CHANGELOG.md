@@ -6,8 +6,8 @@
   and make them public.
 - Add `salmon.route53/fetch-hosted-zone-id` as a simple way to look up
   which hosted zone id to attach RecordSets and RecordSetGroups to.
-  - Add com.cognitect.aws/route53 as a dependency.
-- Upgrade to `party.donut/system 0.0.215`.
+  - Add `com.cognitect.aws/route53` as a dependency.
+- Upgrade to `party.donut/system` 0.0.215.
 
 ## v0.11.0 (2023-08-01)
 
