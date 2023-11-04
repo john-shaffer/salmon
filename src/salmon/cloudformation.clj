@@ -129,10 +129,11 @@
 (defn cou-stack!
   "Create a new stack or update an existing one with the same name."
   [client {::ds/keys [config]} template-json]
-  (let [{:keys [capabilities name parameters]} config
+  (let [{:keys [capabilities name parameters tags]} config
         request {:Capabilities (seq capabilities)
                  :Parameters (aws-parameters parameters)
                  :StackName name
+                 :Tags (u/tags tags)
                  :TemplateBody template-json}
         r (aws/invoke client {:op :DescribeStacks
                               :request {:StackName name}})
