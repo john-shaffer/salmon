@@ -22,14 +22,19 @@
    It is possible to have multiple hosted zone ids with
    the same DNS name, but only one will be returned."
   [client dns-name]
-  (let [{:as response :keys [HostedZones]}
+  (let [fqdn (if (str/ends-with? dns-name ".")
+               dns-name
+               (str dns-name "."))
+        {:as response :keys [HostedZones]}
         (->> {:op :ListHostedZonesByName
-              :request {:DNSName dns-name :MaxItems 1}}
-          (aws/invoke client))]
+              :request {:DNSName dns-name}}
+             (aws/invoke client))
+        hosted-zones (->> HostedZones
+                          (filter (comp #{fqdn} :Name)))]
     (cond
       (u/anomaly? response) response
-      (seq HostedZones) (-> HostedZones first :Id extract-hosted-zone-id)
+      (seq hosted-zones) (-> hosted-zones first :Id extract-hosted-zone-id)
       :else
-      (let [[_ dns-parts] (str/split dns-name #"\.")]
+      (let [[_ & dns-parts] (str/split dns-name #"\.")]
         (when (seq dns-parts)
           (fetch-hosted-zone-id client (str/join "." dns-parts)))))))

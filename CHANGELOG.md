@@ -5,6 +5,9 @@
 - Add `:tags` option to stack for defining stack-level tags.
 - Add `:tags` and `:tags-raw` maps to stack and stack-properties
   instances.
+- Fix a case where hosted zone "matches" returned by AWS don't
+  necessarily match the query.
+
 ## v0.12.0 (2023-11-01)
 
 - Add `:client` and `:region` options to stack and stack-properties
