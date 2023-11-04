@@ -34,7 +34,15 @@
    key-value pairs. If given a map, the map's key-value pairs are
    translated to the CloudFormation format. If given a vector or
    other sequential type, returns a vector of the unchanged items.
-   Returns nil if map-or-xs is empty."
+   Returns nil if `map-or-xs` is empty.
+
+   ```clojure
+   (tags {:a \"A\", :b \"B\"})
+   ;; => [{:Key \"a\", :Value \"A\"} {:Key \"b\", :Value \"B\"}]
+
+   (tags [{:Key \"a\", :Value \"A\"} {:Key \"b\", :Value \"B\"}])
+   ;; => [{:Key \"a\", :Value \"A\"} {:Key \"b\", :Value \"B\"}]
+   ```"
   [map-or-xs]
   (cond
     (empty? map-or-xs) nil
