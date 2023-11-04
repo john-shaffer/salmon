@@ -9,9 +9,10 @@
     malli.core m
     malli.util mu
     medley.core me
-    salmon.cloudformation.interface cfn
-    salmon.util.interface util
-    salmon.validation.interface val}}}
+    salmon.cloudformation cfn
+    salmon.signal sig
+    salmon.util u
+    salmon.validation val}}}
  :lint-as
  {babashka.fs/with-temp-dir clojure.core/with-open
   salmon.util.interface/with-temp-file! clojure.core/with-open}
