@@ -8,6 +8,8 @@
 - Upgrade to `party.donut/system` 0.0.218.
 - Fix a case where hosted zone "matches" returned by AWS don't
   necessarily match the query.
+- Add `salmon.s3/upload!` for uploading to a bucket.
+  - Add `com.cognitect.aws/s3` as a dependency.
 
 ## v0.12.0 (2023-11-01)
 
