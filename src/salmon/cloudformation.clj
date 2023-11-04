@@ -172,6 +172,13 @@
     {}
     parameters-seq))
 
+(defn- tags-map-raw [tags-seq]
+  (reduce
+    (fn [m {:keys [Key] :as tag}]
+      (assoc m (keyword Key) (dissoc tag :Key)))
+    {}
+    tags-seq))
+
 (defn- describe-stack [client stack-name-or-id]
   (let [r (aws/invoke client {:op :DescribeStacks
                               :request {:StackName stack-name-or-id}})]
@@ -206,7 +213,8 @@
 
       :else
       (let [outputs-raw (-> describe-r :Outputs outputs-map-raw)
-            parameters-raw (-> describe-r :Parameters parameters-map-raw)]
+            parameters-raw (-> describe-r :Parameters parameters-map-raw)
+            tags-raw (-> describe-r :Tags tags-map-raw)]
         {:client client
          :describe-stack-raw describe-r
          :name stack-name
@@ -215,7 +223,9 @@
          :parameters (me/map-vals :ParameterValue parameters-raw)
          :parameters-raw parameters-raw
          :resources (resources-map resources)
-         :stack-id stack-id}))))
+         :stack-id stack-id
+         :tags-raw tags-raw
+         :tags (me/map-vals :Value tags-raw)}))))
 
 (defn- start-stack! [{:keys [->error ->validation]
                       ::ds/keys [config instance system]

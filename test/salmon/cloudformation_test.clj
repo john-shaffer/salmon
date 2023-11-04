@@ -3,7 +3,8 @@
             [donut.system :as ds]
             [malli.generator :as mg]
             [salmon.cloudformation :as cfn]
-            [salmon.signal :as sig])
+            [salmon.signal :as sig]
+            [salmon.util :as u])
   (:import (clojure.lang ExceptionInfo)))
 
 (def system-base
@@ -298,6 +299,19 @@
             (->> sys ::ds/instances :services :stack-a :parameters)))
       (sig/delete! sys))))
 
+(deftest test-tags
+  (let [sys (sig/start! (system-a (stack-a
+                                    :tags (u/tags {:cost "iam"})
+                                    :template template-a)))
+        stack-a (->> sys ::ds/instances :services :stack-a)]
+    (is (= [:OAI1]
+          (-> stack-a :resources keys)))
+    (is (= {:cost {:Value "iam"}}
+          (-> stack-a :tags-raw)))
+    (is (= {:cost "iam"}
+          (-> stack-a :tags)))
+    (sig/delete! sys)))
+
 (deftest test-stack-properties-validation
   (testing "stack-properties early-validation works"
     (is (thrown-with-msg?
@@ -325,6 +339,7 @@
                                      :lint? true
                                      :name stack-name
                                      :parameters {:Username "User1"}
+                                     :tags (u/tags {:env "test"})
                                      :template template)
                                    (stack-properties-a))))
       (is (-> @system ::ds/instances :services :stack-properties-a))
@@ -350,6 +365,9 @@
       (is (= {:OUT1 "1" :OUT2 "2" :Username "User1"}
             (->> @system ::ds/instances :services :stack-properties-a :outputs))
         "Outputs are retrieved and attached to the stack-properties instance")
+      (is (= {:env "test"}
+            (->> @system ::ds/instances :services :stack-properties-a :tags))
+        "Tags are retrieved and attached to the stack-properties instance")
       (is (= {:OUT1 {:OutputValue "1" :ExportName (str stack-name "-OUT1")
                      :Description "OUT1 desc"}
               :OUT2 {:OutputValue "2" :ExportName (str stack-name "-OUT2")}
