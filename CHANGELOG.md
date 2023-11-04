@@ -5,6 +5,7 @@
 - Add `:tags` option to stack for defining stack-level tags.
 - Add `:tags` and `:tags-raw` maps to stack and stack-properties
   instances.
+- Upgrade to `party.donut/system` 0.0.218.
 - Fix a case where hosted zone "matches" returned by AWS don't
   necessarily match the query.
 
