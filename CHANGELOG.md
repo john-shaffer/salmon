@@ -1,5 +1,7 @@
 ## Unreleased
 
+## v0.13.0 (2023-11-04)
+
 - Add `salmon.util` functions `full-name`, `tags`, and `resource`.
   These are useful when building CloudFormation templates.
 - Add `:tags` option to stack for defining stack-level tags.
