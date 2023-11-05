@@ -1,5 +1,9 @@
 ## Unreleased
 
+- (breaking) Add required argument `:regions` to `salmon.cleanup/delete-all!`.
+- Add `salmon.resource.certificate/dns-validated`. This creates a
+  resource that defines an automatically-validated AWS Certificate Manager
+  (ACM) certificate.
 - Add `salmon.construct.static-site.simple`. This provides a single
   high-performance static website backed by S3 and CloudFront.
   - Add `io.staticweb/cloudformation-templating` as a dependency.
@@ -16,10 +20,6 @@
   necessarily match the query.
 - Add `salmon.s3/upload!` for uploading to a bucket.
   - Add `com.cognitect.aws/s3` as a dependency.
-- (breaking) Add required argument `:regions` to `salmon.cleanup/delete-all!`.
-- Add `salmon.resource.certificate/dns-validated`. This creates a
-  resource that defines an automatically-validated AWS Certificate Manager
-  (ACM) certificate.
 
 ## v0.12.0 (2023-11-01)
 
