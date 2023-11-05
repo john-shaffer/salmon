@@ -10,6 +10,7 @@
     malli.util mu
     medley.core me
     salmon.cloudformation cfn
+    salmon.resource.certificate cert
     salmon.route53 r53
     salmon.s3 s3
     salmon.signal sig
