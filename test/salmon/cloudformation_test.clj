@@ -1,22 +1,15 @@
 (ns salmon.cloudformation-test
   (:require [clojure.test :refer [deftest is testing]]
             [donut.system :as ds]
-            [malli.generator :as mg]
             [salmon.cloudformation :as cfn]
             [salmon.signal :as sig]
+            [salmon.test :as test]
             [salmon.util :as u])
   (:import (clojure.lang ExceptionInfo)))
 
-(def system-base
-  {::ds/base {:salmon/early-validate sig/early-validate-conf}
-   ::ds/signals
-   {:salmon/delete {:order :topsort :returns-instance? true}
-    :salmon/early-validate {:order :reverse-topsort}
-    ::ds/validate {:order :reverse-topsort}}})
-
 (defn system-a [stack]
   (assoc
-    system-base
+    test/system-base
     ::ds/defs
     {:services {:comp {::ds/config {:name :conf}
                        ::ds/start (constantly {:started? true})
@@ -31,16 +24,13 @@
 
 (defn system-b [stack stack-properties]
   (assoc
-    system-base
+    test/system-base
     ::ds/defs
     {:services {:stack-a stack
                 :stack-properties-a stack-properties}}))
 
-(defn rand-stack-name []
-  (mg/generate [:re cfn/re-stack-name]))
-
 (defn stack-a [& {:as opts}]
-  (-> {:name (rand-stack-name)}
+  (-> {:name (test/rand-stack-name)}
     (merge opts)
     cfn/stack))
 
@@ -141,7 +131,7 @@
   (assoc-in template-a [:Resources :OAI2] (oai "OAI2")))
 
 (deftest test-lifecycle
-  (let [stack-name (rand-stack-name)
+  (let [stack-name (test/rand-stack-name)
         system (atom nil)]
     (testing ":start works"
       (reset! system (sig/start! (system-a (stack-a :lint? true
@@ -177,7 +167,7 @@
         (sig/delete! @system)))))
 
 (deftest test-update
-  (let [name (rand-stack-name)
+  (let [name (test/rand-stack-name)
         sys (atom nil)]
     (reset! sys (sig/start! (system-a (stack-a :name name :template template-a))))
     (testing "Template update works during :start"
@@ -189,7 +179,7 @@
 
 (deftest test-no-change-start
   (testing "If no changes are to be made to the template, start succeeds"
-    (let [stack-name (rand-stack-name)
+    (let [stack-name (test/rand-stack-name)
           template (assoc template-a :Outputs
                      {"OUT1" {:Value "1" :Export {:Name (str stack-name "-OUT1")}}})
           sys (system-a (stack-a :name stack-name :template template))
@@ -204,7 +194,7 @@
       (sig/delete! sys))))
 
 (deftest test-describe-stack-raw
-  (let [stack-name (rand-stack-name)
+  (let [stack-name (test/rand-stack-name)
         sys (sig/start! (system-a (stack-a :capabilities #{"CAPABILITY_NAMED_IAM"} :name stack-name :template template-a)))]
     (testing "Raw stack description is retrieved and attached to the stack-properties instance"
       (is (= ["CAPABILITY_NAMED_IAM"]
@@ -214,7 +204,7 @@
     (sig/delete! sys)))
 
 (deftest test-outputs
-  (let [stack-name (rand-stack-name)
+  (let [stack-name (test/rand-stack-name)
         template (assoc template-a :Outputs
                    {"OUT1" {:Value "1" :Export {:Name (str stack-name "-OUT1")}
                             :Description "OUT1 desc"}
@@ -322,7 +312,7 @@
                                  (stack-properties-a)))))))
 
 (deftest test-stack-properties
-  (let [stack-name (rand-stack-name)
+  (let [stack-name (test/rand-stack-name)
         template (assoc template-b
                    :Parameters
                    {:Username {:Description "Username" :Type "String"}}
