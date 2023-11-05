@@ -10,6 +10,8 @@
     malli.util mu
     medley.core me
     salmon.cloudformation cfn
+    salmon.route53 r53
+    salmon.s3 s3
     salmon.signal sig
     salmon.test test
     salmon.util u
