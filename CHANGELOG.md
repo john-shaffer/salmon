@@ -12,6 +12,7 @@
   necessarily match the query.
 - Add `salmon.s3/upload!` for uploading to a bucket.
   - Add `com.cognitect.aws/s3` as a dependency.
+- (breaking) Add required argument `:regions` to `salmon.cleanup/delete-all!`.
 
 ## v0.12.0 (2023-11-01)
 

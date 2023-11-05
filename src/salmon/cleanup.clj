@@ -73,10 +73,10 @@
 (defn delete-all!
   "Deletes all CloudFormation stacks.
 
-   Must pass :confirm? true."
-  [& {:keys [confirm?]}]
+   Must pass :confirm? and a seq of regions."
+  [& {:keys [confirm? regions]}]
   (if confirm?
-    (do
-      (log/info "Deleting all CloudFormation stacks")
-      (delete-stacks! (aws/client {:api :cloudformation})))
+    (doseq [region regions]
+      (log/info "Deleting all CloudFormation stacks in" region)
+      (delete-stacks! (aws/client {:api :cloudformation :region region})))
     (log/error "delete-all! called without :confirm?. Doing nothing.")))
