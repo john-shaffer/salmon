@@ -106,7 +106,7 @@
        :EvaluateTargetHealth false}}]}
    opts))
 
-(defn- simple-static-site [{:keys [default-ttl domain-name region]}]
+(defn- simple-static-site [{:keys [certificate-arn default-ttl domain-name region]}]
   {:inputs
    {::ds/config
     {:domain-names [domain-name]}
@@ -115,14 +115,18 @@
       (let [client (aws/client {:api :route53 :region region})]
         {:hosted-zone-ids
          (->> domain-names
-              (map #(do [(keyword %) (r53/fetch-hosted-zone-id client %)]))
-              (into {}))}))}
+           (map #(do [(keyword %) (r53/fetch-hosted-zone-id client %)]))
+           (into {}))}))}
    :global
    {:resources
-    {:StaticSiteCertificate
-     (r-cert/dns-validated
-      domain-name
-      :hosted-zone-id (ds/local-ref [:inputs :hosted-zone-ids (keyword domain-name)]))}}
+    (if certificate-arn
+      ; This is effectively a no-op, just here to keep the stack state in sync
+      ; in the case when the certificate-arn was not present and now is.
+      {:OriginAccessIdentity (origin-access-identity :comment "OAI")}
+      {:StaticSiteCertificate
+       (r-cert/dns-validated
+         domain-name
+         :hosted-zone-id (ds/local-ref [:inputs :hosted-zone-ids (keyword domain-name)]))})}
    region
    {:resources
     {:OriginAccessIdentity (origin-access-identity :comment "OAI")
@@ -132,16 +136,16 @@
      (distribution
       ;; RegionalDomainName is needed to avoid DNS-related issues
       ;; https://stackoverflow.com/questions/38735306/aws-cloudfront-redirecting-to-s3-bucket
-      :bucket-domain-name (ct/get-att :Bucket :RegionalDomainName)
-      :certificate-arn (ds/local-ref [:global :resources :StaticSiteCertificate :PhysicalResourceId])
-      :default-ttl default-ttl
-      :domain-name domain-name
-      :origin-access-identity (ct/ref :OriginAccessIdentity))
+       :bucket-domain-name (ct/get-att :Bucket :RegionalDomainName)
+       :certificate-arn (or certificate-arn (ds/local-ref [:global :resources :StaticSiteCertificate :PhysicalResourceId]))
+       :default-ttl default-ttl
+       :domain-name domain-name
+       :origin-access-identity (ct/ref :OriginAccessIdentity))
      :RecordSetGroup
      (record-set-group
-      (ds/local-ref [:inputs :hosted-zone-ids (keyword domain-name)])
-      domain-name
-      (ct/get-att :Distribution :DomainName))}}})
+       (ds/local-ref [:inputs :hosted-zone-ids (keyword domain-name)])
+       domain-name
+       (ct/get-att :Distribution :DomainName))}}})
 
 (defn- stack [& {:keys [lint? name outputs resources region tags]}]
   (cf/stack
