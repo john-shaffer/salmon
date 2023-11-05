@@ -19,6 +19,8 @@
     salmon.validation val}}}
  :lint-as
  {babashka.fs/with-temp-dir clojure.core/with-open
+  salmon.test/with-system clojure.core/with-open
+  salmon.test/with-system-delete clojure.core/with-open
   salmon.util.interface/with-temp-file! clojure.core/with-open}
  :output
  {:exclude-files ["build.clj"]}}
