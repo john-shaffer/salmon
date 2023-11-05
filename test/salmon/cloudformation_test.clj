@@ -131,51 +131,58 @@
   (assoc-in template-a [:Resources :OAI2] (oai "OAI2")))
 
 (deftest test-lifecycle
-  (let [stack-name (test/rand-stack-name)
-        system (atom nil)]
-    (testing ":start works"
-      (reset! system (sig/start! (system-a (stack-a :lint? true
-                                             :name stack-name
-                                             :template template-a))))
-      (is (-> @system ::ds/instances :services :stack-a :client))
-      (testing ":start is idempotent"
-        (let [start (System/nanoTime)]
-          (is (= (::ds/instances @system) (::ds/instances (sig/start! @system))))
-          (is (> 60 (quot (- (System/nanoTime) start) 1000000)))))
-      (testing ":stop works"
-        (reset! system (sig/stop! @system))
-        (is (= nil (-> @system ::ds/instances :services :stack-a :client)))
-        (testing ":stop is idempotent"
-          (let [start (System/nanoTime)]
-            (is (= (::ds/instances @system) (::ds/instances (sig/stop! @system))))
-            (is (> 60 (quot (- (System/nanoTime) start) 1000000)))))
-        (testing "system can be restarted after :stop"
-          (reset! system (sig/start! @system))
-          (is (-> @system ::ds/instances :services :stack-a :client))))
-      (testing ":delete works"
-        (let [stack-id (-> @system ::ds/instances :services :stack-a :stack-id)]
-          (reset! system (sig/delete! @system))
-          (is (= {:name stack-name :stack-id stack-id}
-                (-> @system ::ds/instances :services :stack-a))))
-        (testing ":delete is idempotent"
-          (let [start (System/nanoTime)]
-            (is (= (::ds/instances @system) (::ds/instances (sig/delete! @system))))
-            (is (> 60 (quot (- (System/nanoTime) start) 1000000)))))
-        (testing "system can be restarted after :delete"
-          (reset! system (sig/start! @system))
-          (is (-> @system ::ds/instances :services :stack-a :client)))
-        (sig/delete! @system)))))
+  (let [{:keys [regions]} (test/get-config)
+        stack-name (test/rand-stack-name)]
+    (doseq [region regions
+            :let [system-def (system-a (stack-a :lint? true
+                                         :name stack-name
+                                         :region region
+                                         :template template-a))]]
+      (test/with-system-delete [system system-def]
+        (testing ":start works"
+          ; with-system-delete automatically sends start
+          (is (-> @system ::ds/instances :services :stack-a :client))
+          (testing ":start is idempotent"
+            (let [start (System/nanoTime)]
+              (is (= (::ds/instances @system) (::ds/instances (sig/start! @system))))
+              (is (> 60 (quot (- (System/nanoTime) start) 1000000)))))
+          (testing ":stop works"
+            (reset! system (sig/stop! @system))
+            (is (= nil (-> @system ::ds/instances :services :stack-a :client)))
+            (testing ":stop is idempotent"
+              (let [start (System/nanoTime)]
+                (is (= (::ds/instances @system) (::ds/instances (sig/stop! @system))))
+                (is (> 60 (quot (- (System/nanoTime) start) 1000000)))))
+            (testing "system can be restarted after :stop"
+              (reset! system (sig/start! @system))
+              (is (-> @system ::ds/instances :services :stack-a :client))))
+          (testing ":delete works"
+            (let [stack-id (-> @system ::ds/instances :services :stack-a :stack-id)]
+              (reset! system (sig/delete! @system))
+              (is (= {:name stack-name :stack-id stack-id}
+                    (-> @system ::ds/instances :services :stack-a))))
+            (testing ":delete is idempotent"
+              (let [start (System/nanoTime)]
+                (is (= (::ds/instances @system) (::ds/instances (sig/delete! @system))))
+                (is (> 60 (quot (- (System/nanoTime) start) 1000000)))))
+            (testing "system can be restarted after :delete"
+              (reset! system (sig/start! @system))
+              (is (-> @system ::ds/instances :services :stack-a :client)))))))))
 
 (deftest test-update
-  (let [name (test/rand-stack-name)
-        sys (atom nil)]
-    (reset! sys (sig/start! (system-a (stack-a :name name :template template-a))))
-    (testing "Template update works during :start"
-      (reset! sys (sig/start! (system-a (stack-a :name name :template template-b))))
-      (is (= #{:OAI1 :OAI2}
-            (->> @sys ::ds/instances :services :stack-a :resources
-              keys set))))
-    (sig/delete! @sys)))
+  (let [{:keys [regions]} (test/get-config)
+        name (test/rand-stack-name)]
+    (doseq [region regions
+            :let [system-def (system-a (stack-a
+                                         :name name
+                                         :region region
+                                         :template template-a))]]
+      (test/with-system-delete [system system-def]
+        (testing "Template update works during :start"
+          (reset! system (sig/start! (system-a (stack-a :name name :template template-b))))
+          (is (= #{:OAI1 :OAI2}
+                (->> @system ::ds/instances :services :stack-a :resources
+                  keys set))))))))
 
 (deftest test-no-change-start
   (testing "If no changes are to be made to the template, start succeeds"
