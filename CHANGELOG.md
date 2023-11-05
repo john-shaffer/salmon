@@ -1,5 +1,9 @@
 ## Unreleased
 
+- Add `salmon.construct.static-site.simple`. This provides a single
+  high-performance static website backed by S3 and CloudFront.
+  - Add `io.staticweb/cloudformation-templating` as a dependency.
+
 ## v0.13.0 (2023-11-04)
 
 - Add `salmon.util` functions `full-name`, `tags`, and `resource`.
