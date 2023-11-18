@@ -15,6 +15,7 @@
             clojure
             git
             jdk
+            neil
             python39Packages.cfn-lint
             rlwrap # Used by clj
             time
