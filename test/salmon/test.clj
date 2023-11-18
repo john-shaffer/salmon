@@ -13,9 +13,16 @@
 (defn get-config []
   default-config)
 
+(def ^{:doc "A regular expression for allowed S3 bucket names"}
+  re-bucket-name
+  #"^[a-z0-9][a-z0-9-]{2,62}$")
+
 (def ^{:doc "A regular expression for matching DNS labels"}
   re-dns-label
   #"^[a-zA-Z0-9](?:[a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?$")
+
+(defn rand-bucket-name []
+  (mg/generate [:re re-bucket-name]))
 
 (defn rand-dns-label []
   (mg/generate [:re re-dns-label]))
