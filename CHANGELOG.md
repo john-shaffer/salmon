@@ -10,6 +10,8 @@
 - When a CloudFormation stack is in an `IN_PROGRESS` state and a start or
   delete signal is attempted, stacks would previously return an error.
   They now wait for a `COMPLETE` state before trying to apply the signal again.
+- Add `salmon.util` functions `->ex-info` and `invoke!` for calls to the
+  AWS API that should throw exceptions on failure.
 
 ## v0.13.0 (2023-11-04)
 

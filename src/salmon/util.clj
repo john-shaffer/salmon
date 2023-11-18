@@ -1,5 +1,6 @@
 (ns salmon.util
-  (:require [medley.core :as me]))
+  (:require [cognitect.aws.client.api :as aws]
+            [medley.core :as me]))
 
 (defn anomaly?
   "Returns true when the response (from cognitect.aws.client.api)
@@ -16,6 +17,26 @@
   "Returns the error message, if present, of an AWS API response."
   [response]
   (some-> response :ErrorResponse :Error :Message))
+
+(defn ->ex-info
+  "Returns an [[ex-info]] that represents a failed AWS API response."
+  [result & {:as extra-ex-data}]
+  (let [msg (aws-error-message result)]
+    (throw
+      (ex-info
+        (str "Anomaly during invoke: " msg)
+        (merge {:message msg :result result} extra-ex-data)))))
+
+(defn invoke!
+  "Calls the AWS API and returns a response, or throws an [[ex-info]]
+   if the operation fails.
+
+   See [cognitect.aws.client.api/invoke]."
+  [client op-map]
+  (let [result (aws/invoke client op-map)]
+    (if-not (:cognitect.anomalies/category result)
+      result
+      (->ex-info result :op-map op-map))))
 
 (defn full-name
   "Returns a string representing a symbol or keyword's full name
