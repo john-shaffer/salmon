@@ -16,6 +16,9 @@
 - Fix `salmon.util` functions `aws-error-code` and `aws-error-message` parsing of
   errors found in `(-> response :Response :Errors)` rather than
   `(-> response :ErrorResponse)`.
+- Add `salmon.ec2/list-orphaned-snapshots` to list snapshots that can
+  safely be deleted.
+    - Add `com.cognitect.aws/ec2` as a dependency.
 
 ## v0.13.0 (2023-11-04)
 
