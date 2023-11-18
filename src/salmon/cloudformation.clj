@@ -361,7 +361,7 @@
                      (aws/client {:api :cloudformation :region region}))
             r (get-stack-properties! client signal)]
         (if (u/anomaly? r)
-          (->error (response-error "Error creating stack" r))
+          (->error (response-error "Error creating stack properties" r))
           (when (wait-until-creation-complete! signal client)
             (stack-instance system client (:name config) r)))))))
 
