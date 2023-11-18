@@ -44,5 +44,4 @@
      (try
        ~@body
        (finally
-         (reset! sys# (sig/stop! @sys#))
          (reset! sys# (sig/delete! @sys#))))))
