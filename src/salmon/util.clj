@@ -11,12 +11,14 @@
 (defn aws-error-code
   "Returns the error code, if present, of an AWS API response."
   [response]
-  (some-> response :ErrorResponse :Error :Code))
+  (or (some-> response :ErrorResponse :Error :Code)
+    (some-> response :Response :Errors :Error :Code)))
 
 (defn aws-error-message
   "Returns the error message, if present, of an AWS API response."
   [response]
-  (some-> response :ErrorResponse :Error :Message))
+  (or (some-> response :ErrorResponse :Error :Message)
+    (some-> response :Response :Errors :Error :Message)))
 
 (defn ->ex-info
   "Returns an [[ex-info]] that represents a failed AWS API response."

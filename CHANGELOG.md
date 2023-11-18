@@ -13,6 +13,9 @@
 - Add `salmon.util` functions `->ex-info` and `invoke!` for calls to the
   AWS API that should throw exceptions on failure.
 - Fix pagination of stack resources not working.
+- Fix `salmon.util` functions `aws-error-code` and `aws-error-message` parsing of
+  errors found in `(-> response :Response :Errors)` rather than
+  `(-> response :ErrorResponse)`.
 
 ## v0.13.0 (2023-11-04)
 
