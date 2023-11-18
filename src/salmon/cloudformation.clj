@@ -150,7 +150,7 @@
                    op-map)
           {:keys [NextToken] :as r} (aws/invoke client op-map)]
       (if NextToken
-        (cons r (pages-seq client op-map next-token))
+        (cons r (pages-seq client op-map NextToken))
         (list r)))))
 
 (defn- get-all-pages [client op-map]

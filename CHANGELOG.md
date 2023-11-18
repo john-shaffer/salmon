@@ -12,6 +12,7 @@
   They now wait for a `COMPLETE` state before trying to apply the signal again.
 - Add `salmon.util` functions `->ex-info` and `invoke!` for calls to the
   AWS API that should throw exceptions on failure.
+- Fix pagination of stack resources not working.
 
 ## v0.13.0 (2023-11-04)
 
