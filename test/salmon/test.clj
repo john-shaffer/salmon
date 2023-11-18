@@ -37,8 +37,14 @@
     :salmon/early-validate {:order :reverse-topsort}
     ::ds/validate {:order :reverse-topsort}}})
 
+(def system-def-defaults
+  {:start? true})
+
 (defmacro with-system [[name-sym system-def] & body]
-  `(let [sys# (atom (sig/start! ~system-def))
+  `(let [system-def# (merge system-def-defaults ~system-def)
+         sys# (atom (if (:start? system-def#)
+                      (sig/start! system-def#)
+                      system-def#))
          ~name-sym sys#]
      (try
        ~@body
@@ -46,7 +52,10 @@
          (reset! sys# (sig/stop! @sys#))))))
 
 (defmacro with-system-delete [[name-sym system-def] & body]
-  `(let [sys# (atom (sig/start! ~system-def))
+  `(let [system-def# (merge system-def-defaults ~system-def)
+         sys# (atom (if (:start? system-def#)
+                      (sig/start! system-def#)
+                      system-def#))
          ~name-sym sys#]
      (try
        ~@body
