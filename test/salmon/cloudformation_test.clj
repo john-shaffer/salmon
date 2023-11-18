@@ -169,6 +169,60 @@
               (reset! system (sig/start! @system))
               (is (-> @system ::ds/instances :services :stack-a :client)))))))))
 
+(deftest test-lifecycle-while-in-progress
+  (let [{:keys [regions]} (test/get-config)]
+    (doseq [region regions
+            :let [bucket-def-a {:Type "AWS::S3::Bucket"
+                                :Properties {:BucketName (test/rand-bucket-name)}}
+                  bucket-def-b {:Type "AWS::S3::Bucket"
+                                :Properties {:BucketName (test/rand-bucket-name)}}
+                  template-a {:AWSTemplateFormatVersion "2010-09-09"
+                              :Resources {:BucketA bucket-def-a}}
+                  template-b {:AWSTemplateFormatVersion "2010-09-09"
+                              :Resources {:BucketB bucket-def-b}}
+                  stack-a (cfn/stack
+                            :name (test/rand-stack-name)
+                            :region region
+                            :template template-a)
+                  stack-b (assoc-in stack-a [::ds/config :template] template-b)
+                  system-def-a (assoc test/system-base
+                                 ::ds/defs {:test {:stack stack-a}})
+                  system-def-b (assoc test/system-base
+                                 ::ds/defs {:test {:stack stack-b}})]]
+      (test/with-system-delete [system (assoc system-def-a :start? false)]
+        ; We can't control the timing, so this may not always catch the
+        ; stack during an IN_PROGRESS state. It's enough to use a resource
+        ; that takes a few seconds to create. We don't want to use resources
+        ; that took a very long time (like CloudFront distributions) because
+        ; it's not worth the wait.
+        (future (swap! system sig/start!))
+        (Thread/sleep 1000)
+        (testing "stack start waits on CREATE_IN_PROGRESS state to complete"
+          (reset! system (sig/start! system-def-b))
+          (is (= {:ResourceStatus "CREATE_COMPLETE"}
+                (-> @system ::ds/instances :test :stack :resources :BucketB
+                  (select-keys [:ResourceStatus])))))
+        (reset! system (sig/start! system-def-a))
+        (future (reset! system (sig/start! system-def-b)))
+        (Thread/sleep 1000)
+        (testing "stack start waits on UPDATE_IN_PROGRESS state to complete"
+          (reset! system (sig/start! system-def-a))
+          (is (= {:ResourceStatus "CREATE_COMPLETE"}
+                (-> @system ::ds/instances :test :stack :resources :BucketA
+                  (select-keys [:ResourceStatus])))))
+        (let [sys @system
+              stack (-> sys ::ds/instances :test :stack (select-keys [:name :stack-id]))
+              _ (future (reset! system (sig/start! system-def-a)))
+              _ (Thread/sleep 1000)
+              updated (future (reset! system (sig/delete! sys)))]
+          (Thread/sleep 1000)
+          (testing "stack deletion waits on DELETE_IN_PROGRESS state to complete"
+            (is (= stack
+                  (-> (reset! system (sig/delete! sys))
+                    ::ds/instances :test :stack))))
+          (testing "stack deletion waits on UPDATE_IN_PROGRESS state to complete"
+            (is (= stack (-> @updated ::ds/instances :test :stack)))))))))
+
 (deftest test-update
   (let [{:keys [regions]} (test/get-config)
         name (test/rand-stack-name)]

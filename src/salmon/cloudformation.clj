@@ -239,13 +239,20 @@
       client instance
       errors (->validation errors)
       :else
-      (let [client (or (:client config)
-                     (aws/client {:api :cloudformation :region region}))
-            r (cou-stack! client signal (:json (template-data :template template)))]
-        (if (u/anomaly? r)
+      (loop [client (or (:client config)
+                      (aws/client {:api :cloudformation :region region}))
+             r (cou-stack! client signal (:json (template-data :template template)))]
+        (cond
+          (some-> r u/aws-error-message (str/includes? "_IN_PROGRESS state"))
+          (do
+            (wait-until-complete! signal client)
+            (recur client (cou-stack! client signal (:json (template-data :template template)))))
+
+          (u/anomaly? r)
           (->error (response-error "Error creating stack" r))
-          (when (wait-until-complete! signal client)
-            (stack-instance system client (:name config) r)))))))
+
+          (wait-until-complete! signal client)
+          (stack-instance system client (:name config) r))))))
 
 (defn- stop! [{::ds/keys [instance]}]
   (select-keys instance [:name :stack-id]))
@@ -257,13 +264,20 @@
     :as signal}]
   (if-not client
     instance
-    (let [r (aws/invoke client {:op :DeleteStack
-                                :request {:StackName name}})]
-      (if (u/anomaly? r)
-        (->error (response-error "Error deleting stack" r))
+    (loop [r (aws/invoke client {:op :DeleteStack
+                                 :request {:StackName name}})]
+      (cond
+        (some-> r u/aws-error-message (str/includes? "_IN_PROGRESS state"))
         (do
           (wait-until-complete! signal client)
-          (stop! signal))))))
+          (recur (aws/invoke client {:op :DeleteStack
+                                     :request {:StackName name}})))
+
+        (u/anomaly? r)
+        (->error (response-error "Error deleting stack" r))
+
+        (wait-until-complete! signal client)
+        (stop! signal)))))
 
 (defn stack
   "Returns a component that manages a CloudFormation stack.

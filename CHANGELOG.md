@@ -7,6 +7,9 @@
 - Add `salmon.construct.static-site.simple`. This provides a single
   high-performance static website backed by S3 and CloudFront.
   - Add `io.staticweb/cloudformation-templating` as a dependency.
+- When a CloudFormation stack is in an `IN_PROGRESS` state and a start or
+  delete signal is attempted, stacks would previously return an error.
+  They now wait for a `COMPLETE` state before trying to apply the signal again.
 
 ## v0.13.0 (2023-11-04)
 
