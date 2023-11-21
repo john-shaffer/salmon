@@ -156,7 +156,7 @@
    :template
    (->> {:AWSTemplateFormatVersion "2010-09-09"
          :Metadata
-         {:SalmonOwnership "salmon.construct"}
+         {:SalmonOwner "salmon.construct"}
          :Outputs outputs
          :Resources resources}
         (me/remove-vals nil?))))
