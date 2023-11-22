@@ -161,7 +161,7 @@
          :Resources resources}
         (me/remove-vals nil?))))
 
-(defn ALPHA-group
+(defn- ALPHA-group
   "Experimental static site group. Likely to change."
   [name-prefix & {:as opts :keys [region]}]
   (let [{:as m :keys [inputs global]} (simple-static-site opts)

@@ -87,7 +87,7 @@
           :Resources resources}
       (me/remove-vals nil?))))
 
-(defn ALPHA-group
+(defn- ALPHA-group
   "Experimental shared regional resources group. Likely to change."
   [name-prefix & {:as opts}]
   {:shared (-> (assoc opts
