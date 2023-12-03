@@ -13,4 +13,10 @@
       "Subdomain lookups work")
     (is (= "Z08609191OFSO5HMA450N"
           (r53/fetch-hosted-zone-id client "a.b.c.shafferstest.net"))
-      "Multiple subdomain lookups work")))
+      "Multiple subdomain lookups work")
+    (is (= "Z08609191OFSO5HMA450N"
+          (r53/fetch-hosted-zone-id client "*.shafferstest.net"))
+      "Wildcard subdomain lookups work")
+    (is (= "Z08609191OFSO5HMA450N"
+          (r53/fetch-hosted-zone-id client "*.b.c.shafferstest.net"))
+      "Deep wildcard subdomain lookups work")))
