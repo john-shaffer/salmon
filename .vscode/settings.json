@@ -2,7 +2,7 @@
   "calva.evalOnSave": true,
   "calva.replConnectSequences": [
     {
-      "afterCLJReplJackInCode": "(require 'hashp.core)",
+      "afterCLJReplJackInCode": "(require 'hashp.core 'salmon.cloudformation 'salmon.signal)",
       "autoSelectForConnect": true,
       "autoSelectForJackIn": true,
       "cljsType": "none",
