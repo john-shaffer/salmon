@@ -125,7 +125,7 @@
       {:OriginAccessIdentity (origin-access-identity :comment "OAI")}
       {:StaticSiteCertificate
        (r-cert/dns-validated
-         domain-name
+         :domain-name domain-name
          :hosted-zone-id (ds/local-ref [:inputs :hosted-zone-ids (keyword domain-name)]))})}
    region
    {:resources
