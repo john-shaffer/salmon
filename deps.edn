@@ -11,12 +11,12 @@
         io.staticweb/cloudformation-templating {:mvn/version "2.1.0"}
         medley/medley {:mvn/version "1.4.0"}
         org.clojure/data.json {:mvn/version "2.4.0"}
-        party.donut/system {:mvn/version "0.0.218"
+        party.donut/system {:mvn/version "0.0.220"
                             :exclusions [tailrecursion/cljs-priority-map]}}
  :aliases
  {:antq
   {:deps
-   {com.github.liquidz/antq {:mvn/version "2.7.1133"}
+   {com.github.liquidz/antq {:mvn/version "2.7.1147"}
     org.slf4j/slf4j-nop {:mvn/version "2.0.9"}}
    :main-opts ["-m" "antq.core"]}
   :build
