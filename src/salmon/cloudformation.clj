@@ -306,6 +306,10 @@
    The name of the CloudFormation stack. Must match the
    regex #\"^[a-zA-Z][-a-zA-Z0-9]{0,127}$\"
 
+   :parameters
+   A map of parameters used when creating or updating
+   the stack.
+
    :region
    The AWS region to deploy the stack in. Ignored when
    :client is present.
