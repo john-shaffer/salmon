@@ -13,6 +13,7 @@
     salmon.resource.certificate cert
     salmon.route53 r53
     salmon.s3 s3
+    salmon.ssm ssm
     salmon.signal sig
     salmon.test test
     salmon.uberjar uber

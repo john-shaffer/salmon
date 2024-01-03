@@ -21,6 +21,8 @@
     - Add `com.cognitect.aws/ec2` as a dependency.
 - Add `salmon.uberjar` namespace for building deployable uberjars.
     - Add `io.github.clojure/tools.build` as a dependency.
+- Add `salmon.ssm` namespace for AWS Systems Manager operations. This is currently used to fetch the Debian AMI IDs used in tests.
+    - Add `com.cognitect.aws/ssm` as a dependency.
 
 ## v0.13.0 (2023-11-04)
 
