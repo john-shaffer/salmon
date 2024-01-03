@@ -1,6 +1,6 @@
 ## Unreleased
 
-- (breaking) Add required argument `:regions` to `salmon.cleanup/delete-all!`.
+- (breaking) Rename `salmon.cleanup/delete-all!` to `delete-all-stacks!` and add required argument `:regions`.
 - Add `salmon.resource.certificate/dns-validated`. This creates a
   resource that defines an automatically-validated AWS Certificate Manager
   (ACM) certificate.

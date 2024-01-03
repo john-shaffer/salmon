@@ -70,7 +70,7 @@
       (Thread/sleep 1000))))
 
 #_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
-(defn delete-all!
+(defn delete-all-stacks!
   "Deletes all CloudFormation stacks.
 
    Must pass :confirm? and a seq of regions."
