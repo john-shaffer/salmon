@@ -5,7 +5,7 @@
   resource that defines an automatically-validated AWS Certificate Manager
   (ACM) certificate.
 - Add `salmon.construct.static-site.simple`. This provides a single
-  high-performance static website backed by S3 and CloudFront.
+  high-performance static website backed by S3 and CloudFront. Note: This is not stable and can only be accessed via a private var.
   - Add `io.staticweb/cloudformation-templating` as a dependency.
 - When a CloudFormation stack is in an `IN_PROGRESS` state and a start or
   delete signal is attempted, stacks would previously return an error.
