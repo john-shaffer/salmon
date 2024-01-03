@@ -15,6 +15,7 @@
     salmon.s3 s3
     salmon.signal sig
     salmon.test test
+    salmon.uberjar uber
     salmon.util u
     salmon.validation val}}}
  :lint-as

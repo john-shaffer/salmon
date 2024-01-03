@@ -19,6 +19,8 @@
 - Add `salmon.ec2/list-orphaned-snapshots` to list snapshots that can
   safely be deleted.
     - Add `com.cognitect.aws/ec2` as a dependency.
+- Add `salmon.uberjar` namespace for building deployable uberjars.
+    - Add `io.github.clojure/tools.build` as a dependency.
 
 ## v0.13.0 (2023-11-04)
 
