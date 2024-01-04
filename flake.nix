@@ -16,6 +16,7 @@
             git
             jdk
             neil
+            packer
             python39Packages.cfn-lint
             rlwrap # Used by clj
             time

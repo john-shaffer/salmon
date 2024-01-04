@@ -23,6 +23,9 @@
     - Add `io.github.clojure/tools.build` as a dependency.
 - Add `salmon.ssm` namespace for AWS Systems Manager operations. This is currently used to fetch the Debian AMI IDs used in tests.
     - Add `com.cognitect.aws/ssm` as a dependency.
+- Add `salmon.packer` namespace for building AMIs.
+    - Require Clojure version 1.12.0-alpha5 so that the new `clojure.java.process` namespace can be used. This is preferable to adding a new dependency.
+    - Add `org.clojure/data.csv` as a dependency.
 
 ## v0.13.0 (2023-11-04)
 
