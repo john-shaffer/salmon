@@ -1,5 +1,7 @@
 ## Unreleased
 
+## v0.14.0 (2024-01-16)
+
 - (breaking) Rename `salmon.cleanup/delete-all!` to `delete-all-stacks!` and add required argument `:regions`.
 - Add `salmon.resource.certificate/dns-validated`. This creates a
   resource that defines an automatically-validated AWS Certificate Manager
