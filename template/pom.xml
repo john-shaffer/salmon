@@ -2,7 +2,7 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <name>salmon</name>
-  <description>A library for building AWS architectures in the REPL, and then deploying them in CI/CD environments.</description>
+  <description>AWS in the REPL.</description>
   <url>https://github.com/john-shaffer/salmon</url>
   <licenses>
     <license>
