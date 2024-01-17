@@ -1,5 +1,8 @@
 ## Unreleased
 
+- Remove private `salmon.construct` code. This code has been moved to the [salmon.construct](https://github.com/john-shaffer/salmon.construct) repo.
+  - Remove `io.staticweb/cloudformation-templating` dependency.
+
 ## v0.14.0 (2024-01-16)
 
 - (breaking) Rename `salmon.cleanup/delete-all!` to `delete-all-stacks!` and add required argument `:regions`.
