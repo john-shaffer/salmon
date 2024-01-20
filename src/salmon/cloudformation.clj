@@ -9,7 +9,8 @@
             [malli.error :as merr]
             [medley.core :as me]
             [salmon.util :as u]
-            [salmon.validation :as val]))
+            [salmon.validation :as val]) 
+  (:import [clojure.lang ExceptionInfo]))
 
 (defn- full-name ^String [x]
   (cond
@@ -77,9 +78,9 @@
                 {:message message})))))
 
 (defn- response-error [message response]
-  {:message (str message
-              (some->> response u/aws-error-message (str ": ")))
-   :response response})
+  (ex-info (str message
+             (some->> response u/aws-error-message (str ": ")))
+    {:response response}))
 
 (defn- aws-parameters [parameters]
   (mapv
@@ -89,27 +90,31 @@
     parameters))
 
 (defn- wait-until-complete!
-  [{:keys [->error] :as signal
+  [{:as signal
     {:keys [name]} ::ds/config}
-   client]
+   client
+   & {:as opts :keys [ignore-non-existence?]}]
   (let [r (aws/invoke client {:op :DescribeStacks
                               :request {:StackName name}})
         status (-> r :Stacks first :StackStatus)]
     (cond
       (u/anomaly? r)
-      (->error (response-error "Error getting stack status" r))
+      (if (and ignore-non-existence?
+            (str/includes? (u/aws-error-message r) "does not exist"))
+        nil
+        (throw (response-error "Error getting stack status" r)))
 
       (str/ends-with? status "_FAILED")
-      (->error {:message (str "Stack " name " is in failed state: " status)
-                :name name
-                :status status})
-
-      (str/ends-with? status "_COMPLETE") true
+      (throw (ex-info (str "Stack " name " is in failed state: " status)
+               {:name name
+                :status status}))
+      
+      (str/ends-with? status "_COMPLETE") nil
 
       :else
       (do
         (Thread/sleep 5000)
-        (recur signal client)))))
+        (recur signal client opts)))))
 
 (defn- create-stack! [client request]
   (let [r (aws/invoke client {:op :CreateStack :request request})]
@@ -200,16 +205,16 @@
     {}
     raw-resources))
 
-(defn- stack-instance [{:keys [->error]} client stack-name stack-id]
+(defn- stack-instance [client stack-name stack-id]
   (let [resources (get-resources client stack-id)
         describe-r (when-not (u/anomaly? resources)
                      (describe-stack client stack-id))]
     (cond
       (u/anomaly? resources)
-      (->error (response-error "Error getting resources" resources))
+      (throw (response-error "Error getting resources" resources))
 
       (u/anomaly? describe-r)
-      (->error (response-error "Error getting stack description" describe-r))
+      (throw (response-error "Error getting stack description" describe-r))
 
       :else
       (let [outputs-raw (-> describe-r :Outputs outputs-map-raw)
@@ -230,29 +235,33 @@
 (defn- start-stack! [{:keys [->error ->validation]
                       ::ds/keys [config instance system]
                       :as signal}]
-  (let [{:keys [region template]} config
-        {:keys [client]} instance
-        schema (-> system ::ds/component-def :schema)
-        errors (when-not client
-                 (validate signal schema template))]
-    (cond
-      client instance
-      errors (->validation errors)
-      :else
-      (loop [client (or (:client config)
-                      (aws/client {:api :cloudformation :region region}))
-             r (cou-stack! client signal (:json (template-data :template template)))]
-        (cond
-          (some-> r u/aws-error-message (str/includes? "_IN_PROGRESS state"))
-          (do
+  (try
+    (let [{:keys [region template]} config
+          {:keys [client]} instance
+          schema (-> system ::ds/component-def :schema)
+          errors (when-not client
+                   (validate signal schema template))]
+      (cond
+        client instance
+        errors (->validation errors)
+        :else
+        (loop [client (or (:client config)
+                        (aws/client {:api :cloudformation :region region}))
+               r (cou-stack! client signal (:json (template-data :template template)))]
+          (cond
+            (some-> r u/aws-error-message (str/includes? "_IN_PROGRESS state"))
+            (do
+              (wait-until-complete! signal client)
+              (recur client (cou-stack! client signal (:json (template-data :template template)))))
+
+            (u/anomaly? r)
+            (throw (response-error "Error creating stack" r))
+
             (wait-until-complete! signal client)
-            (recur client (cou-stack! client signal (:json (template-data :template template)))))
-
-          (u/anomaly? r)
-          (->error (response-error "Error creating stack" r))
-
-          (wait-until-complete! signal client)
-          (stack-instance system client (:name config) r))))))
+            (stack-instance client (:name config) r)))))
+    (catch ExceptionInfo e
+      (->error {:message (ex-message e)
+                :data (ex-data e)}))))
 
 (defn- stop! [{::ds/keys [instance]}]
   (select-keys instance [:name :stack-id]))
@@ -264,20 +273,24 @@
     :as signal}]
   (if-not client
     instance
-    (loop [r (aws/invoke client {:op :DeleteStack
-                                 :request {:StackName name}})]
-      (cond
-        (some-> r u/aws-error-message (str/includes? "_IN_PROGRESS state"))
-        (do
+    (try
+      (loop [r (aws/invoke client {:op :DeleteStack
+                                   :request {:StackName name}})]
+        (cond
+          (some-> r u/aws-error-message (str/includes? "_IN_PROGRESS state"))
+          (do
+            (wait-until-complete! signal client)
+            (recur (aws/invoke client {:op :DeleteStack
+                                       :request {:StackName name}})))
+
+          (u/anomaly? r)
+          (throw (response-error "Error deleting stack" r))
+
           (wait-until-complete! signal client)
-          (recur (aws/invoke client {:op :DeleteStack
-                                     :request {:StackName name}})))
-
-        (u/anomaly? r)
-        (->error (response-error "Error deleting stack" r))
-
-        (wait-until-complete! signal client)
-        (stop! signal)))))
+          (stop! signal)))
+      (catch ExceptionInfo e
+        (->error {:message (ex-message e)
+                  :data (ex-data e)})))))
 
 (defn stack
   "Returns a component that manages a CloudFormation stack.
@@ -344,7 +357,7 @@
     (or stack-id r)))
 
 (defn- wait-until-creation-complete!
-  [{:keys [->error] :as signal
+  [{:as signal
     {:keys [name]} ::ds/config}
    client]
   (let [r (aws/invoke client {:op :DescribeStacks
@@ -352,7 +365,7 @@
         status (-> r :Stacks first :StackStatus)]
     (cond
       (u/anomaly? r)
-      (->error (response-error "Error getting stack status" r))
+      (throw (response-error "Error getting stack status" r))
 
       (str/ends-with? status "_COMPLETE") true
 
@@ -375,13 +388,17 @@
       client instance
       errors (->validation errors)
       :else
-      (let [client (or (:client config)
-                     (aws/client {:api :cloudformation :region region}))
-            r (get-stack-properties! client signal)]
-        (if (u/anomaly? r)
-          (->error (response-error "Error creating stack properties" r))
-          (when (wait-until-creation-complete! signal client)
-            (stack-instance system client (:name config) r)))))))
+      (try
+        (let [client (or (:client config)
+                       (aws/client {:api :cloudformation :region region}))
+              r (get-stack-properties! client signal)]
+          (if (u/anomaly? r)
+            (throw (response-error "Error creating stack properties" r))
+            (when (wait-until-creation-complete! signal client)
+              (stack-instance client (:name config) r))))
+        (catch ExceptionInfo e
+          (->error {:message (ex-message e)
+                    :data (ex-data e)}))))))
 
 (defn stack-properties
   "Returns a component that describes an existing CloudFormation
