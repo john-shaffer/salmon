@@ -24,6 +24,13 @@
   re-stack-name
   #"^[a-zA-Z][-a-zA-Z0-9]{0,127}$")
 
+(def ^:private re-in-progress-error-message
+  #"status [A-Z_]+_IN_PROGRESS")
+
+(defn- in-progress-error-message? [s]
+  (or (str/includes? s "_IN_PROGRESS state")
+    (boolean (re-find re-in-progress-error-message s))))
+
 (defn- cfn-lint! [template]
   (fs/with-temp-dir [dir {:prefix (str "salmon-cloudformation")}]
     (let [f (fs/create-file (fs/path dir "cloudformation.template"))]
@@ -249,7 +256,7 @@
                         (aws/client {:api :cloudformation :region region}))
                r (cou-stack! client signal (:json (template-data :template template)))]
           (cond
-            (some-> r u/aws-error-message (str/includes? "_IN_PROGRESS state"))
+            (some-> r u/aws-error-message in-progress-error-message?)
             (do
               (wait-until-complete! signal client)
               (recur client (cou-stack! client signal (:json (template-data :template template)))))
@@ -277,7 +284,7 @@
       (loop [r (aws/invoke client {:op :DeleteStack
                                    :request {:StackName name}})]
         (cond
-          (some-> r u/aws-error-message (str/includes? "_IN_PROGRESS state"))
+          (some-> r u/aws-error-message in-progress-error-message?)
           (do
             (wait-until-complete! signal client)
             (recur (aws/invoke client {:op :DeleteStack

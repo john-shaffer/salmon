@@ -3,6 +3,7 @@
 - Remove private `salmon.construct` code. This code has been moved to the [salmon.construct](https://github.com/john-shaffer/salmon.construct) repo.
   - Remove `io.staticweb/cloudformation-templating` dependency.
 - Fix `salmon.test/bucket-name-schema` should prohibit dashes next to periods.
+- Cloudformation stack delete will now wait on the stack to exit IN_PROGRESS states before attempting to delete. Previously, the delete would fail.
 
 ## v0.14.0 (2024-01-16)
 
