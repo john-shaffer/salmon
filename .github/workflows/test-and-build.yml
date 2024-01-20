@@ -48,5 +48,8 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           mask-aws-account-id: no
 
+      - name: Build devShell
+        run: nix build .#devShells.x86_64-linux.default
+
       - name: Run tests and build jar
         run: nix develop -c clojure -T:build ci :snapshot true

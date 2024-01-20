@@ -50,6 +50,9 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           mask-aws-account-id: no
 
+      - name: Build devShell
+        run: nix build .#devShells.x86_64-linux.default
+
       - name: Run cleanup
         # Make sure that no one forks this and accidentally
         # deletes all their stuff.
