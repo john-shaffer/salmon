@@ -100,7 +100,7 @@
   [{:as signal
     {:keys [name]} ::ds/config}
    client
-   & {:as opts :keys [ignore-non-existence?]}]
+   & {:as opts :keys [error-on-rollback? ignore-non-existence?]}]
   (let [r (aws/invoke client {:op :DescribeStacks
                               :request {:StackName name}})
         status (-> r :Stacks first :StackStatus)]
@@ -116,6 +116,12 @@
                {:name name
                 :status status}))
       
+      (and error-on-rollback?
+        (str/includes? status "ROLLBACK"))
+      (throw (ex-info (str "Stack " name " is in rollback state: " status)
+               {:name name
+                :status status}))
+
       (str/ends-with? status "_COMPLETE") nil
 
       :else
@@ -264,7 +270,7 @@
             (u/anomaly? r)
             (throw (response-error "Error creating stack" r))
 
-            (wait-until-complete! signal client)
+            (wait-until-complete! signal client :error-on-rollback? true)
             (stack-instance client (:name config) r)))))
     (catch ExceptionInfo e
       (->error {:message (ex-message e)

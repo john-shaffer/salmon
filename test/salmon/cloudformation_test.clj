@@ -169,6 +169,49 @@
               (reset! system (sig/start! @system))
               (is (-> @system ::ds/instances :services :stack-a :client)))))))))
 
+(deftest test-rollback-status
+  (let [{:keys [regions]} (test/get-config)]
+    (doseq [region regions
+            :let [bucket-def-a {:Type "AWS::S3::Bucket"
+                                :Properties {:BucketName (test/rand-bucket-name)}}
+                  ; Deliberately create an invalid bucket name
+                  bucket-name-b (as-> (test/rand-bucket-name) $
+                                  (subs $ 0 (min 60 (count $)))
+                                  (str $ ".."))
+                  bucket-def-b {:Type "AWS::S3::Bucket"
+                                :Properties {:BucketName bucket-name-b}}
+                  bucket-def-c {:Type "AWS::S3::Bucket"
+                                :Properties {:BucketName (test/rand-bucket-name)}}
+                  template-a {:AWSTemplateFormatVersion "2010-09-09"
+                              :Resources {:BucketA bucket-def-a}}
+                  template-b {:AWSTemplateFormatVersion "2010-09-09"
+                              :Resources {:BucketB bucket-def-b}}
+                  template-c {:AWSTemplateFormatVersion "2010-09-09"
+                              :Resources {:BucketC bucket-def-c}}
+                  stack-a (cfn/stack
+                            :name (test/rand-stack-name)
+                            :region region
+                            :template template-a)
+                  stack-b (assoc-in stack-a [::ds/config :template] template-b)
+                  stack-c (assoc-in stack-a [::ds/config :template] template-c)
+                  system-def-a (assoc test/system-base
+                                 ::ds/defs {:test {:stack stack-a}})
+                  system-def-b (assoc test/system-base
+                                 ::ds/defs {:test {:stack stack-b}})
+                  system-def-c (assoc test/system-base
+                                 ::ds/defs {:test {:stack stack-c}})]]
+      (test/with-system-delete [system system-def-a]
+        (testing "Entering a rollback status causes an exception"
+          (is (thrown-with-msg? ExceptionInfo
+                ; Can be in any UPDATE_ROLLBACK_ state
+                #"UPDATE_ROLLBACK.*"
+                (reset! system (sig/start! system-def-b))))) 
+        (testing "A stack in a rollback status can be updated"
+          (reset! system (sig/start! system-def-c))
+          (is (= {:ResourceStatus "CREATE_COMPLETE"}
+                (-> @system ::ds/instances :test :stack :resources :BucketC
+                  (select-keys [:ResourceStatus])))))))))
+
 (deftest test-lifecycle-while-in-progress
   (let [{:keys [regions]} (test/get-config)]
     (doseq [region regions
