@@ -33,6 +33,13 @@
    [:re re-bucket-name]
    [:fn #(and
            (not (str/includes? % ".."))
+
+           ; This does not seem to be documented,
+           ; but is necessary to avoid the error
+           ; "Bucket name should not contain dashes next to periods"
+           (not (str/includes? % ".-"))
+           (not (str/includes? % "-."))
+
            (not (str/ends-with? % "--ol-s3"))
            (not (str/ends-with? % "-s3alias"))
            (not (str/starts-with? % "sthree-"))
