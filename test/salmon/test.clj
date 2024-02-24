@@ -22,6 +22,11 @@
   re-dns-label
   #"^[a-zA-Z0-9](?:[a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?$")
 
+
+(def ^{:doc "A regular expression for matching IAM usernames"}
+  re-iam-username
+  #"[a-zA-Z0-9+=,.@_-]{1,64}")
+
 (def ^{:doc "A regular expression for matching IPv4 addresses"}
   re-ipv4-address
   #"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$")
@@ -51,6 +56,9 @@
 
 (defn rand-dns-label []
   (mg/generate [:re re-dns-label]))
+
+(defn rand-iam-username []
+  (mg/generate [:re re-iam-username]))
 
 (defn rand-stack-name []
   (mg/generate [:re cfn/re-stack-name]))

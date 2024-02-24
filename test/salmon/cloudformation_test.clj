@@ -367,7 +367,7 @@
 (deftest test-capabilities
   (let [template {:AWSTemplateFormatVersion "2010-09-09"
                   :Resources
-                  {:User1 (iam-user "User1")}}]
+                  {:User1 (iam-user (test/rand-iam-username))}}]
     (is (thrown-with-msg?
           ExceptionInfo
           #"Error creating stack.*Requires capabilities"
@@ -401,23 +401,24 @@
     (is (thrown-with-msg?
           ExceptionInfo
           #"Error creating stack.*Parameters"
-          (sig/start! (system-a (stack-a :template template)))))
-    (let [sys (sig/start! (system-a (stack-a
-                                      :capabilities #{"CAPABILITY_NAMED_IAM"}
-                                      :parameters {:Username "User1"}
-                                      :template template)))]
+          (cause (ds/start (system-a (stack-a :template template))))))
+    (let [username (test/rand-iam-username)
+          sys (ds/start (system-a (stack-a
+                                    :capabilities #{"CAPABILITY_NAMED_IAM"}
+                                    :parameters {:Username username}
+                                    :template template)))]
       (is (= [:User1]
             (->> sys ::ds/instances :services :stack-a :resources keys)))
-      (is (= {:Username {:ParameterValue "User1"}}
+      (is (= {:Username {:ParameterValue username}}
             (->> sys ::ds/instances :services :stack-a :parameters-raw)))
-      (is (= {:Username "User1"}
+      (is (= {:Username username}
             (->> sys ::ds/instances :services :stack-a :parameters)))
-      (sig/delete! sys))))
+      (ds/signal sys :salmon/delete))))
 
 (deftest test-tags
-  (let [sys (sig/start! (system-a (stack-a
-                                    :tags (u/tags {:cost "iam"})
-                                    :template template-a)))
+  (let [sys (ds/start (system-a (stack-a
+                                  :tags (u/tags {:cost "iam"})
+                                  :template template-a)))
         stack-a (->> sys ::ds/instances :services :stack-a)]
     (is (= [:OAI1]
           (-> stack-a :resources keys)))
@@ -425,7 +426,7 @@
           (-> stack-a :tags-raw)))
     (is (= {:cost "iam"}
           (-> stack-a :tags)))
-    (sig/delete! sys)))
+    (ds/signal sys :salmon/delete)))
 
 (deftest test-stack-properties-validation
   (testing "stack-properties early-validation works"
@@ -448,13 +449,14 @@
                     "OUT2" {:Value "2" :Export {:Name (str stack-name "-OUT2")}}
                          ;; We have to use the parameter to pass linting
                     "Username" {:Value {:Ref "Username"} :Export {:Name (str stack-name "-Username")}}})
-        system (atom nil)]
+        system (atom nil)
+        username (test/rand-iam-username)]
     (testing ":start works"
       (reset! system (sig/start! (system-b
                                    (stack-a :capabilities #{"CAPABILITY_NAMED_IAM"}
                                      :lint? true
                                      :name stack-name
-                                     :parameters {:Username "User1"}
+                                     :parameters {:Username username}
                                      :tags (u/tags {:env "test"})
                                      :template template)
                                    (stack-properties-a))))
@@ -472,13 +474,13 @@
               (->> @system ::ds/instances :services :stack-properties-a :describe-stack-raw :Capabilities)))
         (is (inst?
               (->> @system ::ds/instances :services :stack-properties-a :describe-stack-raw :CreationTime))))
-      (is (= {:Username "User1"}
+      (is (= {:Username username}
             (->> @system ::ds/instances :services :stack-properties-a :parameters))
         "Parameters are retrieved and attached to the stack-properties instance")
-      (is (= {:Username {:ParameterValue "User1"}}
+      (is (= {:Username {:ParameterValue username}}
             (->> @system ::ds/instances :services :stack-properties-a :parameters-raw))
         "Parameters are retrieved and attached to the stack-properties instance")
-      (is (= {:OUT1 "1" :OUT2 "2" :Username "User1"}
+      (is (= {:OUT1 "1" :OUT2 "2" :Username username}
             (->> @system ::ds/instances :services :stack-properties-a :outputs))
         "Outputs are retrieved and attached to the stack-properties instance")
       (is (= {:env "test"}
@@ -487,7 +489,7 @@
       (is (= {:OUT1 {:OutputValue "1" :ExportName (str stack-name "-OUT1")
                      :Description "OUT1 desc"}
               :OUT2 {:OutputValue "2" :ExportName (str stack-name "-OUT2")}
-              :Username {:OutputValue "User1" :ExportName (str stack-name "-Username")}}
+              :Username {:OutputValue username :ExportName (str stack-name "-Username")}}
             (->> @system ::ds/instances :services :stack-properties-a :outputs-raw))
         "Outputs are retrieved and attached to the stack-properties instance")
       (testing ":stop works"
