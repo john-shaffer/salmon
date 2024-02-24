@@ -7,6 +7,7 @@
 - Cloudformation stack delete will now wait on the stack to exit IN_PROGRESS states before attempting to delete. Previously, the delete would fail.
 - (breaking) Remove use of ->error, ->info, and ->validate since donut.system has removed them. Replace with clojure.tools.logging and exceptions.
   - Add `clojure.tools.logging` as a direct dependency.
+- (breaking) Remove salmon.signal/signal!, delete!, early-validate!, start!, and start!. They are no longer needed due to the removal of ->error, ->info, and ->validate.
 
 ## v0.14.0 (2024-01-16)
 
