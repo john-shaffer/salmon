@@ -50,8 +50,14 @@
            (not (str/starts-with? % "xn--"))
            (not (re-matches re-ipv4-address %)))]])
 
-(defn rand-bucket-name []
-  (mg/generate bucket-name-schema))
+(defn rand-bucket-name
+  "Returns a random name for an S3 bucket of at least 8
+   characters to avoid conflicts."
+  []
+  (let [s (mg/generate bucket-name-schema)]
+    (if (<= 8 (count s))
+      s
+      (recur))))
 
 (defn rand-dns-label []
   (mg/generate [:re re-dns-label]))
