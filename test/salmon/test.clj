@@ -73,17 +73,6 @@
 (def system-def-defaults
   {:start? true})
 
-(defmacro with-system [[name-sym system-def] & body]
-  `(let [system-def# (merge system-def-defaults ~system-def)
-         sys# (atom (if (:start? system-def#)
-                      (sig/start! system-def#)
-                      system-def#))
-         ~name-sym sys#]
-     (try
-       ~@body
-       (finally
-         (reset! sys# (sig/stop! @sys#))))))
-
 (defmacro with-system-delete [[name-sym system-def] & body]
   `(let [system-def# (merge system-def-defaults ~system-def)
          sys# (atom (if (:start? system-def#)

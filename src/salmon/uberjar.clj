@@ -43,7 +43,7 @@
       :uber-file (or uber-file (str (fs/path tmp-dir "uberjar.jar"))))))
 
 (defn- start!
-  [{:as system ::ds/keys [config instance]}]
+  [{::ds/keys [config instance]}]
   (or instance
     (let [{:as config :keys [project-dir uber-file]} (init-config config)]
       (build-uberjar! config)
