@@ -271,8 +271,10 @@
             (u/anomaly? r)
             (throw (response-error "Error creating stack" r))
 
-            (wait-until-complete! signal client :error-on-rollback? true)
-            (stack-instance client (:name config) r)))))))
+            :else
+            (do
+              (wait-until-complete! signal client :error-on-rollback? true)
+              (stack-instance client (:name config) r))))))))
 
 (defn- stop! [{::ds/keys [instance]}]
   (select-keys instance [:name :stack-id]))
