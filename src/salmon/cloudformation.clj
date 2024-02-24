@@ -298,8 +298,9 @@
         (u/anomaly? r)
         (throw (response-error "Error deleting stack" r))
 
-        (wait-until-complete! signal client)
-        (stop! signal)))))
+        :else
+        (do (wait-until-complete! signal client :ignore-non-existence? true)
+          (stop! signal))))))
 
 (defn stack
   "Returns a component that manages a CloudFormation stack.
