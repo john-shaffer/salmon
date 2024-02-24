@@ -1,5 +1,7 @@
 ## Unreleased
 
+## v0.15.0 (2024-02-24)
+
 - Remove private `salmon.construct` code. This code has been moved to the [salmon.construct](https://github.com/john-shaffer/salmon.construct) repo.
   - Remove `io.staticweb/cloudformation-templating` dependency.
 - Fix `salmon.test/bucket-name-schema` should prohibit dashes next to periods.
