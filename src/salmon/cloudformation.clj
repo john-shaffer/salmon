@@ -261,12 +261,12 @@
         (validate! signal schema template)
         (loop [client (or (:client config)
                         (aws/client {:api :cloudformation :region region}))
-               r (cou-stack! client signal (:json (template-data :template template)))]
+               r (cou-stack! client signal (:json (template-data :template template :validate? false)))]
           (cond
             (some-> r u/aws-error-message in-progress-error-message?)
             (do
               (wait-until-complete! signal client)
-              (recur client (cou-stack! client signal (:json (template-data :template template)))))
+              (recur client (cou-stack! client signal (:json (template-data :template template :validate? false)))))
 
             (u/anomaly? r)
             (throw (response-error "Error creating stack" r))
