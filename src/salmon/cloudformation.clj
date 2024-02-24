@@ -9,8 +9,7 @@
             [malli.error :as merr]
             [medley.core :as me]
             [salmon.util :as u]
-            [salmon.validation :as val]) 
-  (:import [clojure.lang ExceptionInfo]))
+            [salmon.validation :as val]))
 
 (defn- full-name ^String [x]
   (cond
@@ -46,8 +45,9 @@
                          :or {validate? true}}]
   (let [template-json (json/write-str template)]
     (if-let [errors (and validate? (cfn-lint! template-json))]
-      {:json template-json
-       :message errors}
+      (if (str/blank? errors)
+        {:json template-json}
+        (throw (ex-info errors {:json template-json})))
       {:json template-json})))
 
 (def ^{:private true}
@@ -70,19 +70,24 @@
      [:string {:min 1 :max 128}]
      [:re re-stack-name]]]])
 
-(defn- validate [{::ds/keys [component-id config system]} schema template & {:keys [pre?]}]
+(defn- validate! [{::ds/keys [component-id config system]} schema template & {:keys [pre?]}]
   (let [errors (and schema (m/explain schema config))
         resolved-template (val/resolve-refs system component-id template)
         {:keys [lint?]} config]
     (cond
-      errors {:errors errors
-              :message (merr/humanize errors)}
+      errors (throw
+               (ex-info (str "Validation failed: " (merr/humanize errors))
+                 {:errors errors}))
       (and pre? (not (val/refs-resolveable? system component-id template))) nil
-      (not (map? resolved-template)) {:message "Template must be a map."}
-      (empty? resolved-template) {:message "Template must not be empty."}
+      (not (map? resolved-template)) (throw (ex-info "Template must be a map."
+                                              {:template resolved-template}))
+      (empty? resolved-template) (throw (ex-info "Template must not be empty."
+                                          {:template resolved-template}))
       lint? (let [{:keys [message]} (template-data :template resolved-template)]
               (when (seq message)
-                {:message message})))))
+                (throw (ex-info (str "Template validation failed: " message)
+                         {:message message
+                          :template resolved-template})))))))
 
 (defn- response-error [message response]
   (ex-info (str message
@@ -115,7 +120,7 @@
       (throw (ex-info (str "Stack " name " is in failed state: " status)
                {:name name
                 :status status}))
-      
+
       (and error-on-rollback?
         (str/includes? status "ROLLBACK"))
       (throw (ex-info (str "Stack " name " is in rollback state: " status)
@@ -245,19 +250,15 @@
          :tags-raw tags-raw
          :tags (me/map-vals :Value tags-raw)}))))
 
-(defn- start-stack! [{:keys [->error ->validation]
-                      ::ds/keys [config instance system]
+(defn- start-stack! [{::ds/keys [config instance system]
                       :as signal}]
-  (try
-    (let [{:keys [region template]} config
-          {:keys [client]} instance
-          schema (-> system ::ds/component-def :schema)
-          errors (when-not client
-                   (validate signal schema template))]
-      (cond
-        client instance
-        errors (->validation errors)
-        :else
+  (let [{:keys [region template]} config
+        {:keys [client]} instance
+        schema (-> system ::ds/component-def :schema)]
+    (if client
+      instance
+      (do
+        (validate! signal schema template)
         (loop [client (or (:client config)
                         (aws/client {:api :cloudformation :region region}))
                r (cou-stack! client signal (:json (template-data :template template)))]
@@ -271,39 +272,32 @@
             (throw (response-error "Error creating stack" r))
 
             (wait-until-complete! signal client :error-on-rollback? true)
-            (stack-instance client (:name config) r)))))
-    (catch ExceptionInfo e
-      (->error {:message (ex-message e)
-                :data (ex-data e)}))))
+            (stack-instance client (:name config) r)))))))
 
 (defn- stop! [{::ds/keys [instance]}]
   (select-keys instance [:name :stack-id]))
 
 (defn- delete!
-  [{:keys [->error ::ds/instance]
+  [{:keys [::ds/instance]
     {:keys [name]} ::ds/config
     {:keys [client]} ::ds/instance
     :as signal}]
   (if-not client
     instance
-    (try
-      (loop [r (aws/invoke client {:op :DeleteStack
-                                   :request {:StackName name}})]
-        (cond
-          (some-> r u/aws-error-message in-progress-error-message?)
-          (do
-            (wait-until-complete! signal client)
-            (recur (aws/invoke client {:op :DeleteStack
-                                       :request {:StackName name}})))
-
-          (u/anomaly? r)
-          (throw (response-error "Error deleting stack" r))
-
+    (loop [r (aws/invoke client {:op :DeleteStack
+                                 :request {:StackName name}})]
+      (cond
+        (some-> r u/aws-error-message in-progress-error-message?)
+        (do
           (wait-until-complete! signal client)
-          (stop! signal)))
-      (catch ExceptionInfo e
-        (->error {:message (ex-message e)
-                  :data (ex-data e)})))))
+          (recur (aws/invoke client {:op :DeleteStack
+                                     :request {:StackName name}})))
+
+        (u/anomaly? r)
+        (throw (response-error "Error deleting stack" r))
+
+        (wait-until-complete! signal client)
+        (stop! signal)))))
 
 (defn stack
   "Returns a component that manages a CloudFormation stack.
@@ -350,14 +344,12 @@
    :salmon/delete delete!
    :salmon/early-schema (val/allow-refs stack-schema)
    :salmon/early-validate
-   (fn [{:keys [->validation]
-         {::ds/keys [component-def]} ::ds/system
+   (fn [{{::ds/keys [component-def]} ::ds/system
          :as signal}]
-     (some-> (validate signal
-               (:salmon/early-schema component-def)
-               (-> component-def ::ds/config :template)
-               :pre? true)
-       ->validation))
+     (validate! signal
+       (:salmon/early-schema component-def)
+       (-> component-def ::ds/config :template)
+       :pre? true))
    :schema stack-schema})
 
 (defn- get-stack-properties!
@@ -389,8 +381,7 @@
         (Thread/sleep 5000)
         (recur signal client)))))
 
-(defn- start-stack-properties! [{:keys [->error ->validation]
-                                 ::ds/keys [config instance system]
+(defn- start-stack-properties! [{::ds/keys [config instance system]
                                  :as signal}]
   (let [{:keys [region]} config
         {:keys [client]} instance
@@ -399,19 +390,17 @@
                  (and schema (m/explain schema config)))]
     (cond
       client instance
-      errors (->validation errors)
+      errors (throw
+               (ex-info (str "Validation failed: " (merr/humanize errors))
+                 {:errors errors}))
       :else
-      (try
-        (let [client (or (:client config)
-                       (aws/client {:api :cloudformation :region region}))
-              r (get-stack-properties! client signal)]
-          (if (u/anomaly? r)
-            (throw (response-error "Error creating stack properties" r))
-            (when (wait-until-creation-complete! signal client)
-              (stack-instance client (:name config) r))))
-        (catch ExceptionInfo e
-          (->error {:message (ex-message e)
-                    :data (ex-data e)}))))))
+      (let [client (or (:client config)
+                     (aws/client {:api :cloudformation :region region}))
+            r (get-stack-properties! client signal)]
+        (if (u/anomaly? r)
+          (throw (response-error "Error creating stack properties" r))
+          (when (wait-until-creation-complete! signal client)
+            (stack-instance client (:name config) r)))))))
 
 (defn stack-properties
   "Returns a component that describes an existing CloudFormation

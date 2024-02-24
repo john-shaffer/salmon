@@ -4,10 +4,11 @@
             [clojure.tools.build.api :as b]
             [clojure.tools.deps :as t]
             [clojure.tools.deps.util.dir :as dir]
+            [clojure.tools.logging.readable :as logr]
             [donut.system :as-alias ds]))
 
 (defn- build-uberjar!
-  [{:keys [->info]} {:as opts :keys [aliases class-dir clean? deps-file project-dir]}]
+  [{:as opts :keys [aliases class-dir clean? deps-file project-dir]}]
   (dir/with-dir (fs/file project-dir)
     (let [; Read EDN ourselves to allow filenames like "deps.edn"
           ; rather than "./deps.edn" and surface errors more directly
@@ -24,11 +25,11 @@
                  {:aliases aliases :basis basis :deps-file deps-file})))
       (b/with-project-root (str project-dir)
         (when clean?
-          (->info (str "Cleaning class dir " class-dir))
+          (logr/info (str "Cleaning class dir " class-dir))
           (b/delete {:path class-dir}))
-        (->info (str "Compiling " project-dir))
+        (logr/info (str "Compiling " project-dir))
         (b/compile-clj opts)
-        (->info (str "Building uberjar for " project-dir))
+        (logr/info (str "Building uberjar for " project-dir))
         (b/uber opts)))))
 
 (defn- init-config [{:as config :keys [class-dir deps-file uber-file]}]
@@ -45,7 +46,7 @@
   [{:as system ::ds/keys [config instance]}]
   (or instance
     (let [{:as config :keys [project-dir uber-file]} (init-config config)]
-      (build-uberjar! system config)
+      (build-uberjar! config)
       {:uber-file (str (if (fs/absolute? uber-file)
                          uber-file
                          (fs/absolutize (fs/path project-dir uber-file))))})))

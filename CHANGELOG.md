@@ -5,6 +5,8 @@
 - Fix `salmon.test/bucket-name-schema` should prohibit dashes next to periods.
 - (breaking) Throw an exception if a stack enters a rollback status when updating it. This condition previously did not throw and behaved the same as a successful update.
 - Cloudformation stack delete will now wait on the stack to exit IN_PROGRESS states before attempting to delete. Previously, the delete would fail.
+- (breaking) Remove use of ->error, ->info, and ->validate since donut.system has removed them. Replace with clojure.tools.logging and exceptions.
+  - Add `clojure.tools.logging` as a direct dependency.
 
 ## v0.14.0 (2024-01-16)
 

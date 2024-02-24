@@ -13,7 +13,8 @@
         medley/medley {:mvn/version "1.4.0"}
         org.clojure/data.csv {:mvn/version "1.0.1"}
         org.clojure/data.json {:mvn/version "2.5.0"}
-        party.donut/system {:mvn/version "0.0.227"
+        org.clojure/tools.logging {:mvn/version "1.3.0"}
+        party.donut/system {:mvn/version "0.0.239"
                             :exclusions [tailrecursion/cljs-priority-map]}}
  :aliases
  {:antq

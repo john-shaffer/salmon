@@ -5,11 +5,11 @@
             [clojure.java.io :as io]
             [clojure.java.process :as p]
             [clojure.string :as str]
+            [clojure.tools.logging.readable :as logr]
             [donut.system :as-alias ds]))
 
 (defn- packer-build!
-  [{:keys [->error]}
-   {:keys [dir init? template-file vars]}]
+  [{:keys [dir init? template-file vars]}]
   (when init?
     (p/exec {:dir dir :err :stdout :out :inherit}
       "packer" "init" (str template-file)))
@@ -32,7 +32,7 @@
                        (fn [[_ _ type idx k v]]
                          (cond
                            (= "error" idx)
-                           (do (->error (str "packer build: " k))
+                           (do (logr/error (str "packer build: " k))
                              nil)
 
                            (and (= "artifact" type)
@@ -56,10 +56,10 @@
     :vars (or vars {})))
 
 (defn- start!
-  [{:as system ::ds/keys [config instance]}]
+  [{::ds/keys [config instance]}]
   (or instance
     (let [config (init-config config)
-          {:keys [ami region]} (first (packer-build! system config))]
+          {:keys [ami region]} (first (packer-build! config))]
       {:ami ami :region region})))
 
 (defn- stop! [_]

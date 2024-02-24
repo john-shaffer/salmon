@@ -39,77 +39,97 @@
     (merge opts)
     cfn/stack-properties))
 
+(defmacro cause [& body]
+  `(try
+     (do ~@body)
+     (catch Exception e#
+       (throw (or (ex-cause e#) e#)))))
+
 (deftest test-blank-template-early-validation
   (testing "Blank templates should fail validation"
     (is (thrown-with-msg?
           ExceptionInfo
-          #"Validation failed during :salmon/early-validate: Template must be a map"
-          (sig/early-validate! (system-a (stack-a)))))
+          #"Template must be a map"
+          (cause (ds/signal (system-a (stack-a))
+                   :salmon/early-validate))))
     (is (thrown-with-msg?
           ExceptionInfo
-          #"Validation failed during :salmon/early-validate: Template must be a map"
-          (sig/early-validate! (system-a (stack-a :template "")))))
+          #"Template must be a map"
+          (cause (ds/signal (system-a (stack-a :template ""))
+                   :salmon/early-validate))))
     (is (thrown-with-msg?
           ExceptionInfo
-          #"Validation failed during :salmon/early-validate: Template must be a map"
-          (sig/early-validate! (system-a (stack-a :template 1)))))
+          #"Template must be a map"
+          (cause (ds/signal (system-a (stack-a :template 1))
+                   :salmon/early-validate))))
     (is (thrown-with-msg?
           ExceptionInfo
-          #"Validation failed during :salmon/early-validate: Template must not be empty"
-          (sig/early-validate! (system-a (stack-a :template {})))))))
+          #"Template must not be empty"
+          (cause (ds/signal (system-a (stack-a :template {}))
+                   :salmon/early-validate))))))
 
 (deftest test-early-validation-linting
   (testing "cfn-lint works in :early-validate when there are no refs in the template"
     (is (thrown-with-msg?
           ExceptionInfo
-          #"Validation failed during :salmon/early-validate: E1001 Top level template section a is not valid"
-          (sig/early-validate! (system-a (stack-a :lint? true :template {:a 1}))))))
+          #"E1001 Top level template section a is not valid"
+          (cause (ds/signal (system-a (stack-a :lint? true :template {:a 1}))
+                   :salmon/early-validate)))))
   (testing "cfn-lint doesn't run unless :lint? is true"
-    (is (sig/early-validate! (system-a (stack-a :template {:a 1})))))
+    (is (ds/signal (system-a (stack-a :template {:a 1}))
+          :salmon/early-validate)))
   (testing "cfn-lint works in :early-validate when all refs have been resolved"
     (is (thrown-with-msg?
           ExceptionInfo
-          #"Validation failed during :salmon/early-validate: E1001 Top level template section a is not valid"
-          (sig/early-validate! (system-a (stack-a :lint? true :template {:a (ds/ref [:services :y])}))))))
-  (testing "Pre-validation linting doesn't run for a ref to an un-started services"
-    (is (sig/early-validate! (system-a (stack-a :lint? true :template (ds/ref [:services :T]))))))
-  (testing "Pre-validation linting doesn't run if the template has a nested ref to an un-started service"
-    (is (sig/early-validate! (system-a (stack-a :lint? true :template {:a (ds/ref [:services :T])}))))))
+          #"E1001 Top level template section a is not valid"
+          (cause (ds/signal (system-a (stack-a :lint? true :template {:a (ds/ref [:services :y])}))
+                   :salmon/early-validate))))
+    (testing "Pre-validation linting doesn't run for a ref to an un-started services"
+      (is (ds/signal (system-a (stack-a :lint? true :template (ds/ref [:services :T])))
+            :salmon/early-validate)))
+    (testing "Pre-validation linting doesn't run if the template has a nested ref to an un-started service"
+      (is (ds/signal (system-a (stack-a :lint? true :template {:a (ds/ref [:services :T])}))
+            :salmon/early-validate)))))
 
 (deftest test-local-ref-early-validation
   (testing "Pre-validation linting doesn't run for a local ref to an un-started service"
-    (is (sig/early-validate! (system-a (stack-a :lint? true :template (ds/local-ref [:T])))))
-    (is (sig/early-validate! (system-a (stack-a :lint? true :template (ds/local-ref [:T :dne]))))))
+    (is (ds/signal (system-a (stack-a :lint? true :template (ds/local-ref [:T])))
+          :salmon/early-validate))
+    (is (ds/signal (system-a (stack-a :lint? true :template (ds/local-ref [:T :dne])))
+          :salmon/early-validate)))
   (testing "Local refs should be resolved and their values validated during early-validate!"
     (is (thrown-with-msg?
           ExceptionInfo
-          #"Validation failed during :salmon/early-validate: Template must not be empty"
-          (sig/early-validate! (system-a (stack-a :template (ds/local-ref [:empty-m]))))))
+          #"Template must not be empty"
+          (cause (ds/signal (system-a (stack-a :template (ds/local-ref [:empty-m])))
+                   :salmon/early-validate))))
     (is (thrown-with-msg?
           ExceptionInfo
-          #"Validation failed during :salmon/early-validate: Template must be a map"
-          (sig/early-validate! (system-a (stack-a :lint? true :template (ds/local-ref [:x]))))))
+          #"Template must be a map"
+          (cause (ds/signal (system-a (stack-a :lint? true :template (ds/local-ref [:x])))
+                   :salmon/early-validate))))
     (is (thrown-with-msg?
           ExceptionInfo
-          #"Validation failed during :salmon/early-validate: E1001 Top level template section a is not valid"
-          (sig/early-validate! (system-a (stack-a :lint? true :template {:a (ds/local-ref [:nested :empty])}))))
+          #"E1001 Top level template section a is not valid"
+          (cause (ds/signal (system-a (stack-a :lint? true :template {:a (ds/local-ref [:nested :empty])}))
+                   :salmon/early-validate)))
       "Deep local ref")))
 
 (deftest test-validation-linting
   (testing "ref templates are validated during :start"
     (is (thrown-with-msg?
           ExceptionInfo
-          #"Validation failed during :donut.system/start: Template must not be empty"
-          (sig/start! (system-a (stack-a :lint? true :template (ds/local-ref [:empty]))))))
+          #"Template must not be empty"
+          (cause (ds/start (system-a (stack-a :lint? true :template (ds/local-ref [:empty])))))))
     (is (thrown-with-msg?
           ExceptionInfo
-          #"Validation failed during :donut.system/start: Template must be a map"
-          (sig/start! (system-a (stack-a :lint? true :template (ds/local-ref [:T])))))))
+          #"Template must be a map"
+          (cause (ds/start (system-a (stack-a :lint? true :template (ds/local-ref [:T]))))))))
   (testing "Templates with deep refs are validated during :start"
     (is (thrown-with-msg?
           ExceptionInfo
-          #"Validation failed during :donut.system/start: E1001 Top level template section a is not valid"
-          (sig/start! (system-a (stack-a :lint? true :template {:a (ds/local-ref [:empty])})))))))
+          #"E1001 Top level template section a is not valid"
+          (cause (ds/start (system-a (stack-a :lint? true :template {:a (ds/local-ref [:empty])}))))))))
 
 (defn iam-user [name]
   {:Type "AWS::IAM::User"
@@ -205,7 +225,7 @@
           (is (thrown-with-msg? ExceptionInfo
                 ; Can be in any UPDATE_ROLLBACK_ state
                 #"UPDATE_ROLLBACK.*"
-                (reset! system (sig/start! system-def-b))))) 
+                (cause (reset! system (ds/start system-def-b))))))
         (testing "A stack in a rollback status can be updated"
           (reset! system (sig/start! system-def-c))
           (is (= {:ResourceStatus "CREATE_COMPLETE"}
@@ -342,7 +362,7 @@
     (is (thrown-with-msg?
           ExceptionInfo
           #".*Error creating stack.*Template format error"
-          (sig/start! (system-a (stack-a :template {:a 1})))))))
+          (cause (ds/start (system-a (stack-a :template {:a 1}))))))))
 
 (deftest test-capabilities
   (let [template {:AWSTemplateFormatVersion "2010-09-09"
@@ -351,25 +371,26 @@
     (is (thrown-with-msg?
           ExceptionInfo
           #"Error creating stack.*Requires capabilities"
-          (sig/start! (system-a (stack-a :template template)))))
+          (cause (ds/start (system-a (stack-a :template template))))))
     (is (thrown-with-msg?
           ExceptionInfo
           #"Validation failed"
-          (sig/early-validate! (system-a (stack-a
-                                           :capabilities #{"CAPABILITY_MADE_UP"}
-                                           :template template)))))
+          (cause (ds/signal (system-a (stack-a
+                                        :capabilities #{"CAPABILITY_MADE_UP"}
+                                        :template template))
+                   :salmon/early-validate))))
     (is (thrown-with-msg?
           ExceptionInfo
           #"Validation failed"
-          (sig/start! (system-a (stack-a
-                                  :capabilities #{"CAPABILITY_MADE_UP"}
-                                  :template template)))))
-    (let [sys (sig/start! (system-a (stack-a
-                                      :capabilities #{"CAPABILITY_NAMED_IAM"}
-                                      :template template)))]
+          (cause (ds/start (system-a (stack-a
+                                       :capabilities #{"CAPABILITY_MADE_UP"}
+                                       :template template))))))
+    (let [sys (ds/start (system-a (stack-a
+                                    :capabilities #{"CAPABILITY_NAMED_IAM"}
+                                    :template template)))]
       (is (= [:User1]
             (->> sys ::ds/instances :services :stack-a :resources keys)))
-      (sig/delete! sys))))
+      (ds/signal sys :salmon/delete))))
 
 (deftest test-parameters
   (let [template {:AWSTemplateFormatVersion "2010-09-09"
@@ -410,10 +431,11 @@
   (testing "stack-properties early-validation works"
     (is (thrown-with-msg?
           ExceptionInfo
-          #"Validation failed during :salmon/early-validate: \{:name.*}"
-          (sig/early-validate! (system-b
-                                 (stack-a :template template-a)
-                                 (stack-properties-a)))))))
+          #"Validation failed.*name"
+          (cause (ds/signal (system-b
+                              (stack-a :template template-a)
+                              (stack-properties-a))
+                   :salmon/early-validate))))))
 
 (deftest test-stack-properties
   (let [stack-name (test/rand-stack-name)
