@@ -12,10 +12,10 @@ jobs:
         uses: DeterminateSystems/nix-installer-action@v9
 
       - name: Use the Magic Nix Cache
-        uses: DeterminateSystems/magic-nix-cache-action@v2
+        uses: DeterminateSystems/magic-nix-cache-action@v3
 
       - name: Cache Clojure dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           key: clj-${{ github.repository }}-${{ hashFiles('**/deps.edn') }}
           restore-keys: clj-${{ github.repository }}-
