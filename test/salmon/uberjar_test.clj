@@ -2,7 +2,6 @@
   (:require [clojure.string :as str]
             [clojure.test :refer [deftest is testing]]
             [donut.system :as ds]
-            [salmon.signal :as sig]
             [salmon.test :as test]
             [salmon.uberjar :as uber]))
 
@@ -17,11 +16,11 @@
           sys (atom sys-def)
           c #(-> @sys ::ds/instances :hello-http :uberjar)]
       (try
-        (is (swap! sys sig/start!)
+        (is (swap! sys ds/start)
           "can be started")
         (is (-> (c) :uber-file (str/ends-with? "uberjar.jar"))
           ":uber-file is present and is a string")
-        (is (swap! sys sig/stop!)
+        (is (swap! sys ds/stop)
           "can be stopped")
         (finally
-          (swap! sys sig/stop!))))))
+          (swap! sys ds/stop))))))

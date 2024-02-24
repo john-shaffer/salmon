@@ -2,7 +2,6 @@
   (:require [clojure.test :refer [deftest is testing]]
             [donut.system :as ds]
             [salmon.cloudformation :as cfn]
-            [salmon.signal :as sig]
             [salmon.test :as test]
             [salmon.util :as u])
   (:import (clojure.lang ExceptionInfo)))
@@ -164,29 +163,29 @@
           (is (-> @system ::ds/instances :services :stack-a :client))
           (testing ":start is idempotent"
             (let [start (System/nanoTime)]
-              (is (= (::ds/instances @system) (::ds/instances (sig/start! @system))))
+              (is (= (::ds/instances @system) (::ds/instances (ds/start @system))))
               (is (> 60 (quot (- (System/nanoTime) start) 1000000)))))
           (testing ":stop works"
-            (reset! system (sig/stop! @system))
+            (reset! system (ds/stop @system))
             (is (= nil (-> @system ::ds/instances :services :stack-a :client)))
             (testing ":stop is idempotent"
               (let [start (System/nanoTime)]
-                (is (= (::ds/instances @system) (::ds/instances (sig/stop! @system))))
+                (is (= (::ds/instances @system) (::ds/instances (ds/stop @system))))
                 (is (> 60 (quot (- (System/nanoTime) start) 1000000)))))
             (testing "system can be restarted after :stop"
-              (reset! system (sig/start! @system))
+              (reset! system (ds/start @system))
               (is (-> @system ::ds/instances :services :stack-a :client))))
           (testing ":delete works"
             (let [stack-id (-> @system ::ds/instances :services :stack-a :stack-id)]
-              (reset! system (sig/delete! @system))
+              (reset! system (ds/signal @system :salmon/delete))
               (is (= {:name stack-name :stack-id stack-id}
                     (-> @system ::ds/instances :services :stack-a))))
             (testing ":delete is idempotent"
               (let [start (System/nanoTime)]
-                (is (= (::ds/instances @system) (::ds/instances (sig/delete! @system))))
+                (is (= (::ds/instances @system) (::ds/instances (ds/signal @system :salmon/delete))))
                 (is (> 60 (quot (- (System/nanoTime) start) 1000000)))))
             (testing "system can be restarted after :delete"
-              (reset! system (sig/start! @system))
+              (reset! system (ds/start @system))
               (is (-> @system ::ds/instances :services :stack-a :client)))))))))
 
 (deftest test-rollback-status
@@ -227,7 +226,7 @@
                 #"UPDATE_ROLLBACK.*"
                 (cause (reset! system (ds/start system-def-b))))))
         (testing "A stack in a rollback status can be updated"
-          (reset! system (sig/start! system-def-c))
+          (reset! system (ds/start system-def-c))
           (is (= {:ResourceStatus "CREATE_COMPLETE"}
                 (-> @system ::ds/instances :test :stack :resources :BucketC
                   (select-keys [:ResourceStatus])))))))))
@@ -258,30 +257,30 @@
         ; that takes a few seconds to create. We don't want to use resources
         ; that took a very long time (like CloudFront distributions) because
         ; it's not worth the wait.
-        (future (swap! system sig/start!))
+        (future (swap! system ds/start))
         (Thread/sleep 1000)
         (testing "stack start waits on CREATE_IN_PROGRESS state to complete"
-          (reset! system (sig/start! system-def-b))
+          (reset! system (ds/start system-def-b))
           (is (= {:ResourceStatus "CREATE_COMPLETE"}
                 (-> @system ::ds/instances :test :stack :resources :BucketB
                   (select-keys [:ResourceStatus])))))
-        (reset! system (sig/start! system-def-a))
-        (future (reset! system (sig/start! system-def-b)))
+        (reset! system (ds/start system-def-a))
+        (future (reset! system (ds/start system-def-b)))
         (Thread/sleep 1000)
         (testing "stack start waits on UPDATE_IN_PROGRESS state to complete"
-          (reset! system (sig/start! system-def-a))
+          (reset! system (ds/start system-def-a))
           (is (= {:ResourceStatus "CREATE_COMPLETE"}
                 (-> @system ::ds/instances :test :stack :resources :BucketA
                   (select-keys [:ResourceStatus])))))
         (let [sys @system
               stack (-> sys ::ds/instances :test :stack (select-keys [:name :stack-id]))
-              _ (future (reset! system (sig/start! system-def-a)))
+              _ (future (reset! system (ds/start system-def-a)))
               _ (Thread/sleep 1000)
-              updated (future (reset! system (sig/delete! sys)))]
+              updated (future (reset! system (ds/signal sys :salmon/delete)))]
           (Thread/sleep 1000)
           (testing "stack deletion waits on DELETE_IN_PROGRESS state to complete"
             (is (= stack
-                  (-> (reset! system (sig/delete! sys))
+                  (-> (reset! system (ds/signal sys :salmon/delete))
                     ::ds/instances :test :stack))))
           (testing "stack deletion waits on UPDATE_IN_PROGRESS state to complete"
             (is (= stack (-> @updated ::ds/instances :test :stack)))))))))
@@ -296,7 +295,7 @@
                                          :template template-a))]]
       (test/with-system-delete [system system-def]
         (testing "Template update works during :start"
-          (reset! system (sig/start! (system-a (stack-a :name name :template template-b))))
+          (reset! system (ds/start (system-a (stack-a :name name :template template-b))))
           (is (= #{:OAI1 :OAI2}
                 (->> @system ::ds/instances :services :stack-a :resources
                   keys set))))))))
@@ -307,25 +306,25 @@
           template (assoc template-a :Outputs
                      {"OUT1" {:Value "1" :Export {:Name (str stack-name "-OUT1")}}})
           sys (system-a (stack-a :name stack-name :template template))
-          _ (sig/start! sys)
-          sys (sig/start! sys)]
+          _ (ds/start sys)
+          sys (ds/start sys)]
       (is (= [:OAI1]
             (->> sys ::ds/instances :services :stack-a :resources keys))
         "Resources are correct")
       (is (= {:OUT1 "1"}
             (->> sys ::ds/instances :services :stack-a :outputs))
         "Outputs are correct")
-      (sig/delete! sys))))
+      (ds/signal sys :salmon/delete))))
 
 (deftest test-describe-stack-raw
   (let [stack-name (test/rand-stack-name)
-        sys (sig/start! (system-a (stack-a :capabilities #{"CAPABILITY_NAMED_IAM"} :name stack-name :template template-a)))]
+        sys (ds/start (system-a (stack-a :capabilities #{"CAPABILITY_NAMED_IAM"} :name stack-name :template template-a)))]
     (testing "Raw stack description is retrieved and attached to the stack-properties instance"
       (is (= ["CAPABILITY_NAMED_IAM"]
             (->> sys ::ds/instances :services :stack-a :describe-stack-raw :Capabilities)))
       (is (inst?
             (->> sys ::ds/instances :services :stack-a :describe-stack-raw :CreationTime))))
-    (sig/delete! sys)))
+    (ds/signal sys :salmon/delete)))
 
 (deftest test-outputs
   (let [stack-name (test/rand-stack-name)
@@ -333,7 +332,7 @@
                    {"OUT1" {:Value "1" :Export {:Name (str stack-name "-OUT1")}
                             :Description "OUT1 desc"}
                     "OUT2" {:Value "2" :Export {:Name (str stack-name "-OUT2")}}})
-        sys (sig/start! (system-a (stack-a :name stack-name :template template)))]
+        sys (ds/start (system-a (stack-a :name stack-name :template template)))]
     (is (= {:OUT1 "1" :OUT2 "2"}
           (->> sys ::ds/instances :services :stack-a :outputs))
       "Outputs are retrieved and attached to the stack instance")
@@ -342,10 +341,10 @@
             :OUT2 {:OutputValue "2" :ExportName (str stack-name "-OUT2")}}
           (->> sys ::ds/instances :services :stack-a :outputs-raw))
       "Outputs are retrieved and attached to the stack instance")
-    (sig/delete! sys)))
+    (ds/signal sys :salmon/delete)))
 
 (deftest test-resources
-  (let [sys (sig/start! (system-a (stack-a :template template-b)))]
+  (let [sys (ds/start (system-a (stack-a :template template-b)))]
     (is (= #{:OAI1 :OAI2}
           (->> sys ::ds/instances :services :stack-a :resources
             keys set))
@@ -355,7 +354,7 @@
           (->> sys ::ds/instances :services :stack-a :resources
             vals (mapcat keys) set))
       "Resource maps have the expected keys")
-    (sig/delete! sys)))
+    (ds/signal sys :salmon/delete)))
 
 (deftest test-aws-error-messages
   (testing "AWS error messages are included in thrown exceptions"
@@ -452,18 +451,18 @@
         system (atom nil)
         username (test/rand-iam-username)]
     (testing ":start works"
-      (reset! system (sig/start! (system-b
-                                   (stack-a :capabilities #{"CAPABILITY_NAMED_IAM"}
-                                     :lint? true
-                                     :name stack-name
-                                     :parameters {:Username username}
-                                     :tags (u/tags {:env "test"})
-                                     :template template)
-                                   (stack-properties-a))))
+      (reset! system (ds/start (system-b
+                                 (stack-a :capabilities #{"CAPABILITY_NAMED_IAM"}
+                                   :lint? true
+                                   :name stack-name
+                                   :parameters {:Username username}
+                                   :tags (u/tags {:env "test"})
+                                   :template template)
+                                 (stack-properties-a))))
       (is (-> @system ::ds/instances :services :stack-properties-a))
       (testing ":start is idempotent"
         (let [start (System/nanoTime)]
-          (is (= (::ds/instances @system) (::ds/instances (sig/start! @system))))
+          (is (= (::ds/instances @system) (::ds/instances (ds/start @system))))
           (is (> 60 (quot (- (System/nanoTime) start) 1000000)))))
       (is (= #{:OAI1 :OAI2}
             (->> @system ::ds/instances :services :stack-properties-a :resources
@@ -493,27 +492,27 @@
             (->> @system ::ds/instances :services :stack-properties-a :outputs-raw))
         "Outputs are retrieved and attached to the stack-properties instance")
       (testing ":stop works"
-        (reset! system (sig/stop! @system))
+        (reset! system (ds/stop @system))
         (let [stack-id (-> @system ::ds/instances :services :stack-a :stack-id)]
           (is (= {:name stack-name :stack-id stack-id}
                 (-> @system ::ds/instances :services :stack-properties-a))))
         (testing ":stop is idempotent"
           (let [start (System/nanoTime)]
-            (is (= (::ds/instances @system) (::ds/instances (sig/stop! @system))))
+            (is (= (::ds/instances @system) (::ds/instances (ds/stop @system))))
             (is (> 60 (quot (- (System/nanoTime) start) 1000000)))))
         (testing "system can be restarted after :stop"
-          (reset! system (sig/start! @system))
+          (reset! system (ds/start @system))
           (is (-> @system ::ds/instances :services :stack-properties-a :resources))))
       (testing ":delete works"
         (let [stack-id (-> @system ::ds/instances :services :stack-a :stack-id)]
-          (reset! system (sig/delete! @system))
+          (reset! system (ds/signal @system :salmon/delete))
           (is (= {:name stack-name :stack-id stack-id}
                 (-> @system ::ds/instances :services :stack-properties-a))))
         (testing ":delete is idempotent"
           (let [start (System/nanoTime)]
-            (is (= (::ds/instances @system) (::ds/instances (sig/delete! @system))))
+            (is (= (::ds/instances @system) (::ds/instances (ds/signal @system :salmon/delete))))
             (is (> 60 (quot (- (System/nanoTime) start) 1000000)))))
         (testing "system can be restarted after :delete"
-          (reset! system (sig/start! @system))
+          (reset! system (ds/start @system))
           (is (-> @system ::ds/instances :services :stack-properties-a :resources)))
-        (sig/delete! @system)))))
+        (ds/signal @system :salmon/delete)))))

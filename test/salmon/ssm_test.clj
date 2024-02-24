@@ -2,7 +2,6 @@
   (:require [clojure.string :as str]
             [clojure.test :refer [deftest is testing]]
             [donut.system :as ds]
-            [salmon.signal :as sig]
             [salmon.ssm :as ssm]
             [salmon.test :as test]))
 
@@ -21,7 +20,7 @@
                     sys (atom sys-def)
                     c #(-> @sys ::ds/instances :ssm :parameters-getter)]]
         (try
-          (is (swap! sys sig/start!)
+          (is (swap! sys ds/start)
             "can be started")
           (is (-> (c) :parameters :ami :Name (= param-name))
             "parameter name is correct")
@@ -29,7 +28,7 @@
             "parameter value is correct")
           (is (-> (c) :parameters :ami :Type (= "String"))
             "parameter type is correct")
-          (is (swap! sys sig/stop!)
+          (is (swap! sys ds/stop)
             "can be stopped")
           (finally
-            (swap! sys sig/stop!)))))))
+            (swap! sys ds/stop)))))))

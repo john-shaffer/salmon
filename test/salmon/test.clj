@@ -22,7 +22,6 @@
   re-dns-label
   #"^[a-zA-Z0-9](?:[a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?$")
 
-
 (def ^{:doc "A regular expression for matching IAM usernames"}
   re-iam-username
   #"[a-zA-Z0-9+=,.@_-]{1,64}")
@@ -76,10 +75,10 @@
 (defmacro with-system-delete [[name-sym system-def] & body]
   `(let [system-def# (merge system-def-defaults ~system-def)
          sys# (atom (if (:start? system-def#)
-                      (sig/start! system-def#)
+                      (ds/start system-def#)
                       system-def#))
          ~name-sym sys#]
      (try
        ~@body
        (finally
-         (reset! sys# (sig/delete! @sys#))))))
+         (reset! sys# (ds/signal @sys# :salmon/delete))))))
