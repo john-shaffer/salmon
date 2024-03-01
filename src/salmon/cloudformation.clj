@@ -102,12 +102,11 @@
     parameters))
 
 (defn- wait-until-complete!
-  [{:as signal
-    {:keys [name]} ::ds/config}
+  [stack-name
    client
    & {:as opts :keys [error-on-rollback? ignore-non-existence?]}]
   (let [r (aws/invoke client {:op :DescribeStacks
-                              :request {:StackName name}})
+                              :request {:StackName stack-name}})
         status (-> r :Stacks first :StackStatus)]
     (cond
       (u/anomaly? r)
@@ -117,14 +116,14 @@
         (throw (response-error "Error getting stack status" r)))
 
       (str/ends-with? status "_FAILED")
-      (throw (ex-info (str "Stack " name " is in failed state: " status)
-               {:name name
+      (throw (ex-info (str "Stack " stack-name " is in failed state: " status)
+               {:name stack-name
                 :status status}))
 
       (and error-on-rollback?
         (str/includes? status "ROLLBACK"))
-      (throw (ex-info (str "Stack " name " is in rollback state: " status)
-               {:name name
+      (throw (ex-info (str "Stack " stack-name " is in rollback state: " status)
+               {:name stack-name
                 :status status}))
 
       (str/ends-with? status "_COMPLETE") nil
@@ -132,7 +131,7 @@
       :else
       (do
         (Thread/sleep 5000)
-        (recur signal client opts)))))
+        (recur stack-name client opts)))))
 
 (defn- create-stack! [client request]
   (let [r (aws/invoke client {:op :CreateStack :request request})]
@@ -252,7 +251,7 @@
 
 (defn- start-stack! [{::ds/keys [config instance system]
                       :as signal}]
-  (let [{:keys [region template]} config
+  (let [{:keys [name region template]} config
         {:keys [client]} instance
         schema (-> system ::ds/component-def :schema)]
     (if client
@@ -265,7 +264,7 @@
           (cond
             (some-> r u/aws-error-message in-progress-error-message?)
             (do
-              (wait-until-complete! signal client)
+              (wait-until-complete! name client)
               (recur client (cou-stack! client signal (:json (template-data :template template :validate? false)))))
 
             (u/anomaly? r)
@@ -273,7 +272,7 @@
 
             :else
             (do
-              (wait-until-complete! signal client :error-on-rollback? true)
+              (wait-until-complete! name client :error-on-rollback? true)
               (stack-instance client (:name config) r))))))))
 
 (defn- stop! [{::ds/keys [instance]}]
@@ -291,7 +290,7 @@
       (cond
         (some-> r u/aws-error-message in-progress-error-message?)
         (do
-          (wait-until-complete! signal client)
+          (wait-until-complete! name client)
           (recur (aws/invoke client {:op :DeleteStack
                                      :request {:StackName name}})))
 
@@ -299,7 +298,7 @@
         (throw (response-error "Error deleting stack" r))
 
         :else
-        (do (wait-until-complete! signal client :ignore-non-existence? true)
+        (do (wait-until-complete! name client :ignore-non-existence? true)
           (stop! signal))))))
 
 (defn stack
