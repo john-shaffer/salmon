@@ -516,3 +516,34 @@
           (reset! system (ds/start @system))
           (is (-> @system ::ds/instances :services :stack-properties-a :resources)))
         (ds/signal @system :salmon/delete)))))
+
+(deftest test-stack-rollback-complete-state
+  (let [stack-name (test/rand-stack-name)
+        template {:AWSTemplateFormatVersion "2010-09-09"
+                  :Resources
+                  {:User
+                   {:Type "AWS::S3::Bucket"
+                    :Properties
+                    {:BucketName " "}}}}
+        system-def (assoc
+                     test/system-base
+                     ::ds/defs
+                     {:services
+                      {:stack
+                       (cfn/stack
+                         {:capabilities #{"CAPABILITY_NAMED_IAM"}
+                          :name stack-name
+                          :template template})}})
+        system (atom system-def)]
+    (testing "Force a ROLLBACK_COMPLETE state"
+      (is (thrown-with-msg? ExceptionInfo #"ROLLBACK_COMPLETE"
+            (cause (swap! system ds/start)))))
+    (testing "Creating a stack with the same name as a stack in ROLLBACK_COMPLETE succeeds"
+      (swap! system assoc-in [::ds/defs :services :stack]
+        (cfn/stack
+          {:name stack-name
+           :template template-a}))
+      (swap! system ds/start)
+      (is (= "CREATE_COMPLETE"
+            (->> @system ::ds/instances :services :stack :resources
+              :OAI1 :ResourceStatus))))))

@@ -182,11 +182,15 @@
                  :TemplateBody template-json}
         r (aws/invoke client {:op :DescribeStacks
                               :request {:StackName name}})
-        stack-id (some-> r :Stacks first :StackId)]
+        {:keys [StackId StackStatus]} (some-> r :Stacks first)]
     (cond
+      (= "ROLLBACK_COMPLETE" StackStatus)
+      #__ (do
+            (delete-stack! client StackId)
+            (create-stack! client request))
       (= "ValidationError" (u/aws-error-code r)) (create-stack! client request)
       (u/anomaly? r) r
-      :else (update-stack! client request stack-id))))
+      :else (update-stack! client request StackId))))
 
 (defn- pages-seq [client op-map & [next-token]]
   (lazy-seq
