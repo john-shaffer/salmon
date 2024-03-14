@@ -3,6 +3,7 @@
             [clojure.data.json :as json]
             [clojure.java.shell :as sh]
             [clojure.string :as str]
+            [clojure.tools.logging.readable :as logr]
             [cognitect.aws.client.api :as aws]
             [donut.system :as ds]
             [malli.core :as m]
@@ -105,6 +106,9 @@
   [stack-name
    client
    & {:as opts :keys [error-on-rollback? ignore-non-existence?]}]
+  (if error-on-rollback?
+    (logr/info "Waiting for stack to enter a COMPLETE, FAILED, or ROLLBACK status" stack-name)
+    (logr/info "Waiting for stack to enter a COMPLETE or FAILED status" stack-name))
   (let [r (aws/invoke client {:op :DescribeStacks
                               :request {:StackName stack-name}})
         status (-> r :Stacks first :StackStatus)]
@@ -140,6 +144,7 @@
       (some-> r u/aws-error-message in-progress-error-message?)
       (do
         (wait-until-complete! name client)
+        (logr/info "Deleting stack" name)
         (recur (aws/invoke client {:op :DeleteStack
                                    :request {:StackName name}})))
 
@@ -150,12 +155,14 @@
       (wait-until-complete! name client :ignore-non-existence? true))))
 
 (defn- create-stack! [client request]
+  (logr/info "Creating stack" (:StackName request))
   (let [r (aws/invoke client {:op :CreateStack :request request})]
     (if (u/anomaly? r)
       r
       (:StackId r))))
 
 (defn- update-stack! [client request stack-id]
+  (logr/info "Updating stack" name)
   (let [request (assoc request :StackName stack-id)
         r (aws/invoke client {:op :UpdateStack :request request})
         msg (u/aws-error-message r)]

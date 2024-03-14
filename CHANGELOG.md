@@ -1,5 +1,6 @@
 ## Unreleased
 
+- Add logging messages when creating, updating, or deleting a stack, and when waiting for a stack to enter a new state.
 ## v0.15.0 (2024-02-24)
 
 - Remove private `salmon.construct` code. This code has been moved to the [salmon.construct](https://github.com/john-shaffer/salmon.construct) repo.
