@@ -1,5 +1,8 @@
 ## Unreleased
 
+- Add logging messages when creating, updating, or deleting a stack, and when waiting for a stack to enter a new state.
+- (breaking) When a CloudFormation stack fails during creation, it enters the ROLLBACK_COMPLETE status. Previously, salmon would fail during stack start when the named stack is in ROLLBACK_COMPLETE status. Now salmon deletes the stack and creates a new stack with the same name.
+
 ## v0.15.0 (2024-02-24)
 
 - Remove private `salmon.construct` code. This code has been moved to the [salmon.construct](https://github.com/john-shaffer/salmon.construct) repo.
