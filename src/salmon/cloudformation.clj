@@ -133,6 +133,22 @@
         (Thread/sleep 5000)
         (recur stack-name client opts)))))
 
+(defn- delete-stack! [client name]
+  (loop [r (aws/invoke client {:op :DeleteStack
+                               :request {:StackName name}})]
+    (cond
+      (some-> r u/aws-error-message in-progress-error-message?)
+      (do
+        (wait-until-complete! name client)
+        (recur (aws/invoke client {:op :DeleteStack
+                                   :request {:StackName name}})))
+
+      (u/anomaly? r)
+      (throw (response-error "Error deleting stack" r))
+
+      :else
+      (wait-until-complete! name client :ignore-non-existence? true))))
+
 (defn- create-stack! [client request]
   (let [r (aws/invoke client {:op :CreateStack :request request})]
     (if (u/anomaly? r)
@@ -285,21 +301,9 @@
     :as signal}]
   (if-not client
     instance
-    (loop [r (aws/invoke client {:op :DeleteStack
-                                 :request {:StackName name}})]
-      (cond
-        (some-> r u/aws-error-message in-progress-error-message?)
-        (do
-          (wait-until-complete! name client)
-          (recur (aws/invoke client {:op :DeleteStack
-                                     :request {:StackName name}})))
-
-        (u/anomaly? r)
-        (throw (response-error "Error deleting stack" r))
-
-        :else
-        (do (wait-until-complete! name client :ignore-non-existence? true)
-          (stop! signal))))))
+    (do
+      (delete-stack! client name)
+      (stop! signal))))
 
 (defn stack
   "Returns a component that manages a CloudFormation stack.
