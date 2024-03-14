@@ -105,37 +105,38 @@
 (defn- wait-until-complete!
   [stack-name
    client
-   & {:as opts :keys [error-on-rollback? ignore-non-existence?]}]
+   & {:keys [error-on-rollback? ignore-non-existence?]}]
   (if error-on-rollback?
     (logr/info "Waiting for stack to enter a COMPLETE, FAILED, or ROLLBACK status" stack-name)
     (logr/info "Waiting for stack to enter a COMPLETE or FAILED status" stack-name))
-  (let [r (aws/invoke client {:op :DescribeStacks
-                              :request {:StackName stack-name}})
-        status (-> r :Stacks first :StackStatus)]
-    (cond
-      (u/anomaly? r)
-      (if (and ignore-non-existence?
-            (str/includes? (u/aws-error-message r) "does not exist"))
-        nil
-        (throw (response-error "Error getting stack status" r)))
+  (loop []
+    (let [r (aws/invoke client {:op :DescribeStacks
+                                :request {:StackName stack-name}})
+          status (-> r :Stacks first :StackStatus)]
+      (cond
+        (u/anomaly? r)
+        (if (and ignore-non-existence?
+              (str/includes? (u/aws-error-message r) "does not exist"))
+          nil
+          (throw (response-error "Error getting stack status" r)))
 
-      (str/ends-with? status "_FAILED")
-      (throw (ex-info (str "Stack " stack-name " is in failed state: " status)
-               {:name stack-name
-                :status status}))
+        (str/ends-with? status "_FAILED")
+        (throw (ex-info (str "Stack " stack-name " is in failed state: " status)
+                 {:name stack-name
+                  :status status}))
 
-      (and error-on-rollback?
-        (str/includes? status "ROLLBACK"))
-      (throw (ex-info (str "Stack " stack-name " is in rollback state: " status)
-               {:name stack-name
-                :status status}))
+        (and error-on-rollback?
+          (str/includes? status "ROLLBACK"))
+        (throw (ex-info (str "Stack " stack-name " is in rollback state: " status)
+                 {:name stack-name
+                  :status status}))
 
-      (str/ends-with? status "_COMPLETE") nil
+        (str/ends-with? status "_COMPLETE") nil
 
-      :else
-      (do
-        (Thread/sleep 5000)
-        (recur stack-name client opts)))))
+        :else
+        (do
+          (Thread/sleep 5000)
+          (recur))))))
 
 (defn- delete-stack! [client name]
   (loop [r (aws/invoke client {:op :DeleteStack
