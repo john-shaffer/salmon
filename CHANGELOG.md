@@ -40,6 +40,47 @@
 - (breaking) When a CloudFormation stack fails during creation, it enters the ROLLBACK_COMPLETE status. Previously, salmon would fail during stack start when the named stack is in ROLLBACK_COMPLETE status. Now salmon deletes the stack and creates a new stack with the same name.
 - Upgrade deps
 
+## v0.21.0 (2025-02-10)
+
+- Update `salmon.util/aws-error-code` and `salmon.util/aws-error-message`
+  to find error codes and messages in responses that return a
+  top-level :Error map, such as the response to :DeleteBucket.
+  They would previously return nil for these responses.
+- Add `salmon.cleanup/full-delete-all-stacks!` for deleting
+  resources in test accounts
+- Add `:termination-protection?` option to `salmon.cloudformation/stack`.
+  This can be used to enable or disable termination protection.  
+
+## v0.20.0 (2024-12-12)
+
+- Add `salmon.util/pages-seq` for handling paginated responses.
+- Add `salmon.cleanup/deregister-all-amis!` for cleaning up AMIs in test accounts.
+- Add `salmon.cleanup/delete-orphaned-snapshots!` for cleaning up snapshots in test accounts.
+- Use `:cognitect.aws.error/code` to find the error code in `salmon.util/aws-error-code`.
+- If there is no message, use the error code in an ex-info created by `salmon.util/->ex-info`.
+
+## v0.19.0 (2024-09-16)
+
+- Fix a case where ExceptionInfos generated from aws-api invocations were missing a message.
+  This could happen when the error occurred before making a request to AWS, such as when aws-api cannot find valid credentials.
+
+## v0.18.0 (2024-08-22)
+
+- Fix error that occurred when a stack in UPDATE_ROLLBACK_COMPLETE state was started with no changes requested. This will now succeed with no errors.
+- (potentially breaking) Upgrade to clojure 1.12.0-rc1 from 1.12.0-alpha5.
+
+## v0.17.0 (2024-05-03)
+
+- Improve error messages when a stack is in a rollback state by adding the event that caused the failure.
+- Fix "Updating stack" log message was missing the stack name
+
+## v0.16.0 (2024-04-11)
+
+- Add logging messages when creating, updating, or deleting a stack, and when waiting for a stack to enter a new state.
+- (breaking) When a CloudFormation stack fails during creation, it enters the ROLLBACK_COMPLETE status. Previously, salmon would fail during stack start when the named stack is in ROLLBACK_COMPLETE status. Now salmon deletes the stack and creates a new stack with the same name.
+- Upgrade deps
+
+- Add logging messages when creating, updating, or deleting a stack, and when waiting for a stack to enter a new state.
 ## v0.15.0 (2024-02-24)
 
 - Remove private `salmon.construct` code. This code has been moved to the [salmon.construct](https://github.com/john-shaffer/salmon.construct) repo.
