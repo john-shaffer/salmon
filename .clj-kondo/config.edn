@@ -1,26 +1,6 @@
 {:linters
- {:refer-all {:level :off}
-  :consistent-aliases
-  {:aliases
-   {clojure.data.json json
-    clojure.java.process p
-    clojure.java.shell sh
-    com.rpl.specter sp
-    donut.system ds
-    malli.core m
-    malli.util mu
-    medley.core me
-    salmon.cloudformation cfn
-    salmon.packer pkr
-    salmon.resource.certificate cert
-    salmon.route53 r53
-    salmon.s3 s3
-    salmon.ssm ssm
-    salmon.signal sig
-    salmon.test test
-    salmon.uberjar uber
-    salmon.util u
-    salmon.validation val}}}
+ {:clojure-lsp/different-aliases {:level :warn}
+  :refer-all {:level :off}}
  :lint-as
  {babashka.fs/with-temp-dir clojure.core/with-open
   salmon.test/with-system clojure.core/with-open
