@@ -2,9 +2,9 @@
  :deps {org.clojure/clojure {:mvn/version "1.12.0-alpha9"}
         babashka/fs {:mvn/version "0.5.20"}
         com.cognitect.aws/api {:mvn/version "0.8.692"}
-        com.cognitect.aws/cloudformation {:mvn/version "868.2.1584.0"}
-        com.cognitect.aws/ec2 {:mvn/version "868.2.1584.0"}
-        com.cognitect.aws/endpoints {:mvn/version "1.1.12.682"}
+        com.cognitect.aws/cloudformation {:mvn/version "868.2.1599.0"}
+        com.cognitect.aws/ec2 {:mvn/version "868.2.1599.0"}
+        com.cognitect.aws/endpoints {:mvn/version "1.1.12.701"}
         com.cognitect.aws/route53 {:mvn/version "857.2.1574.0"}
         com.cognitect.aws/s3 {:mvn/version "868.2.1580.0"}
         com.cognitect.aws/ssm {:mvn/version "868.2.1580.0"}
@@ -19,8 +19,8 @@
  :aliases
  {:antq
   {:deps
-   {com.github.liquidz/antq {:mvn/version "2.8.1185"}
-    org.slf4j/slf4j-nop {:mvn/version "2.0.12"}}
+   {com.github.liquidz/antq {:mvn/version "2.8.1201"}
+    org.slf4j/slf4j-nop {:mvn/version "2.0.13"}}
    :main-opts ["-m" "antq.core"]}
   :build
   {:deps {io.github.seancorfield/build-clj
@@ -33,13 +33,13 @@
    :main-opts ["-m" "clj-watson.cli" "scan" "-s" "-p" "deps.edn"]}
   :test
   {:extra-deps
-   {ch.qos.logback/logback-classic {:mvn/version "1.5.4"}
+   {ch.qos.logback/logback-classic {:mvn/version "1.5.6"}
     ; Used by malli.generator/-re-gen
     com.gfredericks/test.chuck {:mvn/version "0.2.14"}
     hashp/hashp {:mvn/version "0.2.2"}
     lambdaisland/kaocha {:git/url "https://github.com/insilica/kaocha.git"
                          :sha "811d37448e10b52e78dd2ef6ba95535e59f6bbda"}
     lambdaisland/kaocha-cloverage {:mvn/version "1.1.89"}
-    org.slf4j/slf4j-api {:mvn/version "2.0.12"}}
+    org.slf4j/slf4j-api {:mvn/version "2.0.13"}}
    :extra-paths ["test"]
    :jvm-opts ["-Dclojure.tools.logging.factory=clojure.tools.logging.impl/slf4j-factory"]}}}
