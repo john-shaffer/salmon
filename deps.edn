@@ -26,6 +26,11 @@
   {:deps {io.github.seancorfield/build-clj
           {:git/tag "v0.9.2" :git/sha "9c9f078"}}
    :ns-default build}
+  :clj-watson
+  {:replace-deps
+   {io.github.clj-holmes/clj-watson
+    {:git/tag "v5.1.2" :git/sha "ae20e1e"}}
+   :main-opts ["-m" "clj-watson.cli" "scan" "-s" "-p" "deps.edn"]}
   :test
   {:extra-deps
    {ch.qos.logback/logback-classic {:mvn/version "1.5.4"}
