@@ -185,7 +185,7 @@
       (:StackId r))))
 
 (defn- update-stack! [client request stack-id]
-  (logr/info "Updating stack" name)
+  (logr/info "Updating stack" stack-id)
   (let [request (assoc request :StackName stack-id)
         r (aws/invoke client {:op :UpdateStack :request request})
         msg (u/aws-error-message r)]
