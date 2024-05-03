@@ -1,5 +1,7 @@
 ## Unreleased
 
+## v0.17.0 (2024-05-03)
+
 - Improve error messages when a stack is in a rollback state by adding the event that caused the failure.
 - Fix "Updating stack" log message was missing the stack name
 
