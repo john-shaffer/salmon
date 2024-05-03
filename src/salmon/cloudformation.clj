@@ -12,6 +12,8 @@
             [salmon.util :as u]
             [salmon.validation :as val]))
 
+(declare pages-seq)
+
 (defn- full-name ^String [x]
   (cond
     (string? x) x
@@ -102,6 +104,28 @@
        :ParameterValue v})
     parameters))
 
+(defn- find-failure-cause [stack-name client]
+  (let [events (->> {:op :DescribeStackEvents
+                     :request {:StackName stack-name}}
+                 (pages-seq client)
+                 (mapcat :StackEvents))]
+    (loop [[event & more] events
+           last-failure nil]
+      (cond
+        (not event) last-failure
+        (= "User Initiated" (:ResourceStatusReason event)) last-failure
+        (#{"CREATE_FAILED" "UPDATE_FAILED"} (:ResourceStatus event)) (recur more event)
+        :else (recur more last-failure)))))
+
+(defn- rollback-error [stack-name client status]
+  (let [event (find-failure-cause stack-name client)]
+    (ex-info (str "Stack " stack-name " is in rollback state: " status ". "
+               (:LogicalResourceId event) " failed with reason: "
+               (:ResourceStatusReason event))
+      {:name stack-name
+       :event-cause event
+       :status status})))
+
 (defn- wait-until-complete!
   [stack-name
    client
@@ -127,9 +151,7 @@
 
         (and error-on-rollback?
           (str/includes? status "ROLLBACK"))
-        (throw (ex-info (str "Stack " stack-name " is in rollback state: " status)
-                 {:name stack-name
-                  :status status}))
+        (throw (rollback-error stack-name client status))
 
         (str/ends-with? status "_COMPLETE") nil
 

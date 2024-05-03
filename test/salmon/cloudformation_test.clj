@@ -517,6 +517,43 @@
           (is (-> @system ::ds/instances :services :stack-properties-a :resources)))
         (ds/signal @system :salmon/delete)))))
 
+(deftest test-stack-rollback-error-message
+  (let [stack-name (test/rand-stack-name)
+        template {:AWSTemplateFormatVersion "2010-09-09"
+                  :Resources
+                  {:User
+                   {:Type "AWS::S3::Bucket"
+                    :Properties
+                    {:BucketName "amazon.com"}}}}
+        system-def (assoc
+                     test/system-base
+                     ::ds/defs
+                     {:services
+                      {:stack
+                       (cfn/stack
+                         {:capabilities #{"CAPABILITY_NAMED_IAM"}
+                          :name stack-name
+                          :template template})}})
+        system (atom system-def)
+        e (try (cause (swap! system ds/start))
+            (catch Exception e
+              e))
+        {:keys [event-cause name status]} (ex-data e)]
+    (testing "Rollback exception includes the source of the failure"
+      (is (re-find #"User failed with reason: Resource handler returned message: \"amazon\.com already exists"
+            (ex-message e))
+        "Error message includes resource error message")
+      (is (#{"ROLLBACK_COMPLETE" "ROLLBACK_IN_PROGRESS"} status))
+      (is (= stack-name name))
+      (is (= {:LogicalResourceId "User"
+              :PhysicalResourceId ""
+              :ResourceProperties "{\"BucketName\":\"amazon.com\"}"
+              :ResourceStatus "CREATE_FAILED"
+              :ResourceType "AWS::S3::Bucket"
+              :StackName stack-name}
+            (select-keys event-cause [:LogicalResourceId :PhysicalResourceId :ResourceProperties
+                                      :ResourceStatus :ResourceType :StackName]))))))
+
 (deftest test-stack-rollback-complete-state
   (let [stack-name (test/rand-stack-name)
         template {:AWSTemplateFormatVersion "2010-09-09"

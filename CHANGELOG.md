@@ -1,5 +1,7 @@
 ## Unreleased
 
+- Improve error messages when a stack is in a rollback state by adding the event that caused the failure.
+
 ## v0.16.0 (2024-04-11)
 
 - Add logging messages when creating, updating, or deleting a stack, and when waiting for a stack to enter a new state.
