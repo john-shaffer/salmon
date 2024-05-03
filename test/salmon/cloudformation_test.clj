@@ -554,7 +554,7 @@
             (select-keys event-cause [:LogicalResourceId :PhysicalResourceId :ResourceProperties
                                       :ResourceStatus :ResourceType :StackName]))))))
 
-(deftest test-stack-rollback-complete-state
+(deftest test-stack-rollback-state
   (let [stack-name (test/rand-stack-name)
         template {:AWSTemplateFormatVersion "2010-09-09"
                   :Resources
@@ -572,10 +572,10 @@
                           :name stack-name
                           :template template})}})
         system (atom system-def)]
-    (testing "Force a ROLLBACK_COMPLETE state"
-      (is (thrown-with-msg? ExceptionInfo #"ROLLBACK_COMPLETE"
+    (testing "Force a rollback state"
+      (is (thrown-with-msg? ExceptionInfo #"ROLLBACK_(COMPLETE|IN_PROGRESS)"
             (cause (swap! system ds/start)))))
-    (testing "Creating a stack with the same name as a stack in ROLLBACK_COMPLETE succeeds"
+    (testing "Creating a stack with the same name as a stack in a rollback state succeeds"
       (swap! system assoc-in [::ds/defs :services :stack]
         (cfn/stack
           {:name stack-name
