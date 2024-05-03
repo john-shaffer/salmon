@@ -1,5 +1,4 @@
 {
-  "calva.evalOnSave": true,
   "calva.replConnectSequences": [
     {
       "afterCLJReplJackInCode": "(require 'hashp.core 'salmon.cloudformation 'salmon.signal)",
