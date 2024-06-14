@@ -181,8 +181,8 @@
   (logr/info "Creating stack" (:StackName request))
   (let [r (aws/invoke client {:op :CreateStack :request request})]
     (if (u/anomaly? r)
-      r
-      (:StackId r))))
+      [r false]
+      [(:StackId r) true])))
 
 (defn- update-stack! [client request stack-id]
   (logr/info "Updating stack" stack-id)
@@ -190,11 +190,11 @@
         r (aws/invoke client {:op :UpdateStack :request request})
         msg (u/aws-error-message r)]
     (cond
-      (= "No updates are to be performed." msg) stack-id
-      (u/anomaly? r) r
-      :else stack-id)))
+      (= "No updates are to be performed." msg) [stack-id false]
+      (u/anomaly? r) [r false]
+      :else [stack-id true])))
 
-(defn cou-stack!
+(defn- cou-stack!
   "Create a new stack or update an existing one with the same name."
   [client {::ds/keys [config]} template-json]
   (let [{:keys [capabilities name parameters tags]} config
@@ -212,7 +212,7 @@
             (delete-stack! client StackId)
             (create-stack! client request))
       (= "ValidationError" (u/aws-error-code r)) (create-stack! client request)
-      (u/anomaly? r) r
+      (u/anomaly? r) [r false]
       :else (update-stack! client request StackId))))
 
 (defn- pages-seq [client op-map & [next-token]]
@@ -310,7 +310,7 @@
         (validate! signal schema template)
         (loop [client (or (:client config)
                         (aws/client {:api :cloudformation :region region}))
-               r (cou-stack! client signal (:json (template-data :template template :validate? false)))]
+               [r updated?] (cou-stack! client signal (:json (template-data :template template :validate? false)))]
           (cond
             (some-> r u/aws-error-message in-progress-error-message?)
             (do
@@ -322,7 +322,8 @@
 
             :else
             (do
-              (wait-until-complete! name client :error-on-rollback? true)
+              (when updated?
+                (wait-until-complete! name client :error-on-rollback? true))
               (stack-instance client (:name config) r))))))))
 
 (defn- stop! [{::ds/keys [instance]}]
