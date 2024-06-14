@@ -44,6 +44,25 @@
      (catch Exception e#
        (throw (or (ex-cause e#) e#)))))
 
+(defn bucket-template [& {:keys [name]}]
+  {:AWSTemplateFormatVersion "2010-09-09"
+   :Resources
+   {:Bucket
+    {:Type "AWS::S3::Bucket"
+     :Properties
+     {:BucketName (or name (test/rand-bucket-name))}}}})
+
+(defn template-system [& {:keys [name template]}]
+  (assoc
+    test/system-base
+    ::ds/defs
+    {:services
+     {:stack
+      (cfn/stack
+        {:capabilities #{"CAPABILITY_NAMED_IAM"}
+         :name (or name (test/rand-stack-name))
+         :template template})}}))
+
 (deftest test-blank-template-early-validation
   (testing "Blank templates should fail validation"
     (is (thrown-with-msg?
@@ -519,12 +538,7 @@
 
 (deftest test-stack-rollback-error-message
   (let [stack-name (test/rand-stack-name)
-        template {:AWSTemplateFormatVersion "2010-09-09"
-                  :Resources
-                  {:User
-                   {:Type "AWS::S3::Bucket"
-                    :Properties
-                    {:BucketName "amazon.com"}}}}
+        template (bucket-template :name "amazon.com")
         system-def (assoc
                      test/system-base
                      ::ds/defs
@@ -540,12 +554,12 @@
               e))
         {:keys [event-cause name status]} (ex-data e)]
     (testing "Rollback exception includes the source of the failure"
-      (is (re-find #"User failed with reason: Resource handler returned message: \"amazon\.com already exists"
+      (is (re-find #"Bucket failed with reason: Resource handler returned message: \"amazon\.com already exists"
             (ex-message e))
         "Error message includes resource error message")
       (is (#{"ROLLBACK_COMPLETE" "ROLLBACK_IN_PROGRESS"} status))
       (is (= stack-name name))
-      (is (= {:LogicalResourceId "User"
+      (is (= {:LogicalResourceId "Bucket"
               :PhysicalResourceId ""
               :ResourceProperties "{\"BucketName\":\"amazon.com\"}"
               :ResourceStatus "CREATE_FAILED"
@@ -555,32 +569,27 @@
                                       :ResourceStatus :ResourceType :StackName]))))))
 
 (deftest test-stack-rollback-state
-  (let [stack-name (test/rand-stack-name)
-        template {:AWSTemplateFormatVersion "2010-09-09"
-                  :Resources
-                  {:User
-                   {:Type "AWS::S3::Bucket"
-                    :Properties
-                    {:BucketName " "}}}}
-        system-def (assoc
-                     test/system-base
-                     ::ds/defs
-                     {:services
-                      {:stack
-                       (cfn/stack
-                         {:capabilities #{"CAPABILITY_NAMED_IAM"}
-                          :name stack-name
-                          :template template})}})
-        system (atom system-def)]
+  (let [system (atom (template-system :template (bucket-template :name " ")))]
     (testing "Force a rollback state"
       (is (thrown-with-msg? ExceptionInfo #"ROLLBACK_(COMPLETE|IN_PROGRESS)"
             (cause (swap! system ds/start)))))
     (testing "Creating a stack with the same name as a stack in a rollback state succeeds"
-      (swap! system assoc-in [::ds/defs :services :stack]
-        (cfn/stack
-          {:name stack-name
-           :template template-a}))
+      (reset! system (template-system :template (bucket-template)))
       (swap! system ds/start)
       (is (= "CREATE_COMPLETE"
             (->> @system ::ds/instances :services :stack :resources
-              :OAI1 :ResourceStatus))))))
+              :Bucket :ResourceStatus))))))
+
+(deftest test-no-changes-update-rollback-complete
+  (let [stack-name (test/rand-stack-name)
+        system-def (template-system :name stack-name :template (bucket-template))
+        system (atom system-def)]
+    (swap! system ds/start)
+    (testing "Force the stack to rollback"
+      (reset! system (template-system :name stack-name :template (bucket-template :name " ")))
+      (is (thrown-with-msg? ExceptionInfo #"UPDATE_ROLLBACK_(COMPLETE|IN_PROGRESS)"
+            (cause (swap! system ds/start)))))
+    (testing "The stack can be started with no changes when in UPDATE_ROLLBACK_COMPLETE status"
+      (reset! system system-def)
+      ; start will wait for _COMPLETE status before attempting to update
+      (swap! system ds/start))))
