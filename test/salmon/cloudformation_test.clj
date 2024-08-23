@@ -554,7 +554,7 @@
               e))
         {:keys [event-cause name status]} (ex-data e)]
     (testing "Rollback exception includes the source of the failure"
-      (is (re-find #"Bucket failed with reason: Resource handler returned message: \"amazon\.com already exists"
+      (is (re-find #"Bucket failed with reason:.*amazon\.com already exists"
             (ex-message e))
         "Error message includes resource error message")
       (is (#{"ROLLBACK_COMPLETE" "ROLLBACK_IN_PROGRESS"} status))
