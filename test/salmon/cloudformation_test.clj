@@ -4,22 +4,25 @@
             [salmon.cloudformation :as cfn]
             [salmon.test :as test]
             [salmon.util :as u])
-  (:import (clojure.lang ExceptionInfo)))
+  (:import (clojure.lang ExceptionInfo)
+           [java.util.concurrent Executors]))
 
 (defn system-a [stack]
-  (assoc
-    test/system-base
-    ::ds/defs
-    {:services {:comp {::ds/config {:name :conf}
-                       ::ds/start (constantly {:started? true})
-                       ::ds/stop (fn [_])}
-                :empty {::ds/start (constantly {})}
-                :empty-m {::ds/start {}}
-                :nested {::ds/start {:empty {}}}
-                :T {::ds/start (constantly :T)}
-                :x {::ds/start :X}
-                :y {::ds/start "Y!"}
-                :stack-a stack}}))
+  (let [pool (Executors/newFixedThreadPool 8)]
+    (assoc
+      test/system-base
+      ::ds/execute (fn [f] (.execute pool f))
+      ::ds/defs
+      {:services {:comp {::ds/config {:name :conf}
+                         ::ds/start (constantly {:started? true})
+                         ::ds/stop (fn [_])}
+                  :empty {::ds/start (constantly {})}
+                  :empty-m {::ds/start {}}
+                  :nested {::ds/start {:empty {}}}
+                  :T {::ds/start (constantly :T)}
+                  :x {::ds/start :X}
+                  :y {::ds/start "Y!"}
+                  :stack-a stack}})))
 
 (defn system-b [stack stack-properties]
   (assoc
