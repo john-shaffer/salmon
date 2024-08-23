@@ -1,5 +1,7 @@
 ## Unreleased
 
+## v0.18.0 (2024-08-22)
+
 - Fix error that occurred when a stack in UPDATE_ROLLBACK_COMPLETE state was started with no changes requested. This will now succeed with no errors.
 - (potentially breaking) Upgrade to clojure 1.12.0-rc1 from 1.12.0-alpha5.
 
