@@ -11,10 +11,12 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@v10
+        uses: DeterminateSystems/nix-installer-action@v13
+
+      - run: echo "NIXPKGS_ALLOW_UNFREE=1" >> $GITHUB_ENV
 
       - name: Use the Magic Nix Cache
-        uses: DeterminateSystems/magic-nix-cache-action@v4
+        uses: DeterminateSystems/magic-nix-cache-action@v7
 
       - name: Cache Clojure dependencies
         uses: actions/cache@v4
@@ -34,11 +36,11 @@ jobs:
           mask-aws-account-id: no
 
       - name: Build devShell
-        run: nix build .#devShells.x86_64-linux.default
+        run: nix build --impure .#devShells.x86_64-linux.default
 
       - name: Run cleanup
         # Make sure that no one forks this and accidentally
         # deletes all their stuff.
         if: ${{ github.repository }} == 'john-shaffer/salmon'
         run: |
-          nix develop -c clj -X salmon.cleanup/delete-all-stacks! :confirm? true :regions "[:us-east-1 :us-east-2 :us-west-2]"
+          nix develop --impure -c clj -X salmon.cleanup/delete-all-stacks! :confirm? true :regions "[:us-east-1 :us-east-2 :us-west-2]"
