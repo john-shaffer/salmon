@@ -18,15 +18,14 @@
                      (with-open [w (io/writer (fs/file tmp "vars.json"))]
                        (json/write vars w))
                      (fs/file tmp "vars.json"))
-          {:as p :keys [out process]}
-          #__ (p/start {:dir dir :err :stdout}
-                "packer"
-                "build"
-                "-machine-readable"
-                (or (some->> var-file (str "-var-file=")) "")
-                (str template-file))
+          p (p/start {:dir dir :err :stdout}
+              "packer"
+              "build"
+              "-machine-readable"
+              (or (some->> var-file (str "-var-file=")) "")
+              (str template-file))
           data (try
-                 (with-open [rdr (io/reader out)]
+                 (with-open [rdr (-> p p/stdout io/reader)]
                    (->> rdr csv/read-csv
                      (keep
                        (fn [[_ _ type idx k v]]
@@ -43,11 +42,12 @@
                               :region region}))))
                      doall))
                  (catch Exception e
-                   (.destroy process)
-                   (throw e)))]
-      (if (zero? @p)
+                   (.destroy p)
+                   (throw e)))
+          exit @(p/exit-ref p)]
+      (if (zero? exit)
         data
-        (throw (ex-info (str "packer build exited with code " @p)
+        (throw (ex-info (str "packer build exited with code " exit)
                  {:process p}))))))
 
 (defn- init-config [{:as config :keys [vars]}]
@@ -68,7 +68,7 @@
 (defn ami
   "Returns a component that builds an AMI using packer. Requires
    a packer binary on the $PATH.
-   
+
    Config options:
 
    :dir (Required)
