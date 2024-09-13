@@ -1,4 +1,4 @@
-{:paths ["src" "resources"]
+{:paths ["src"]
  :deps {org.clojure/clojure {:mvn/version "1.12.0-rc1"}
         babashka/fs {:mvn/version "0.5.22"}
         com.cognitect.aws/api {:mvn/version "0.8.692"}
