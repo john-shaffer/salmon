@@ -18,7 +18,8 @@
   "Returns the error message, if present, of an AWS API response."
   [response]
   (or (some-> response :ErrorResponse :Error :Message)
-    (some-> response :Response :Errors :Error :Message)))
+    (some-> response :Response :Errors :Error :Message)
+    (:cognitect.anomalies/message response)))
 
 (defn ->ex-info
   "Returns an [[ex-info]] that represents a failed AWS API response."

@@ -1,5 +1,8 @@
 ## Unreleased
 
+- Fix a case where ExceptionInfos generated from aws-api invocations were missing a message.
+  This could happen when the error occurred before making a request to AWS, such as when aws-api cannot find valid credentials.
+
 ## v0.18.0 (2024-08-22)
 
 - Fix error that occurred when a stack in UPDATE_ROLLBACK_COMPLETE state was started with no changes requested. This will now succeed with no errors.
