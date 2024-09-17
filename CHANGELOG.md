@@ -1,5 +1,7 @@
 ## Unreleased
 
+## v0.19.0 (2024-09-16)
+
 - Fix a case where ExceptionInfos generated from aws-api invocations were missing a message.
   This could happen when the error occurred before making a request to AWS, such as when aws-api cannot find valid credentials.
 
