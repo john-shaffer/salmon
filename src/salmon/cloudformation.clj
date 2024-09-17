@@ -10,9 +10,8 @@
             [malli.error :as merr]
             [medley.core :as me]
             [salmon.util :as u]
-            [salmon.validation :as val]))
-
-(declare pages-seq)
+            [salmon.validation :as val])
+  (:import [clojure.lang ExceptionInfo]))
 
 (defn- full-name ^String [x]
   (cond
@@ -107,7 +106,7 @@
 (defn- find-failure-cause [stack-name client]
   (let [events (->> {:op :DescribeStackEvents
                      :request {:StackName stack-name}}
-                 (pages-seq client)
+                 (u/pages-seq client)
                  (mapcat :StackEvents))]
     (loop [[event & more] events
            last-failure nil]
@@ -215,21 +214,6 @@
       (u/anomaly? r) [r false]
       :else (update-stack! client request StackId))))
 
-(defn- pages-seq [client op-map & [next-token]]
-  (lazy-seq
-    (let [op-map (if next-token
-                   (assoc-in op-map [:request :NextToken] next-token)
-                   op-map)
-          {:keys [NextToken] :as r} (aws/invoke client op-map)]
-      (if NextToken
-        (cons r (pages-seq client op-map NextToken))
-        (list r)))))
-
-(defn- get-all-pages [client op-map]
-  (let [pages (pages-seq client op-map)]
-    (or (first (filter u/anomaly? pages))
-      (vec pages))))
-
 (defn- outputs-map-raw [outputs-seq]
   (reduce
     (fn [m {:keys [OutputKey] :as output}]
@@ -252,18 +236,17 @@
     tags-seq))
 
 (defn- describe-stack [client stack-name-or-id]
-  (let [r (aws/invoke client {:op :DescribeStacks
-                              :request {:StackName stack-name-or-id}})]
-    (if (u/anomaly? r)
-      r
-      (-> r :Stacks first))))
+  (-> (u/invoke! client
+        {:op :DescribeStacks
+         :request {:StackName stack-name-or-id}})
+    :Stacks
+    first))
 
 (defn- get-resources [client stack-name-or-id]
-  (let [r (get-all-pages client {:op :ListStackResources
-                                 :request {:StackName stack-name-or-id}})]
-    (if (u/anomaly? r)
-      r
-      (mapcat :StackResourceSummaries r))))
+  (->> {:op :ListStackResources
+        :request {:StackName stack-name-or-id}}
+    (u/pages-seq client)
+    (mapcat :StackResourceSummaries)))
 
 (defn- resources-map [raw-resources]
   (reduce
@@ -273,31 +256,27 @@
     raw-resources))
 
 (defn- stack-instance [client stack-name stack-id]
-  (let [resources (get-resources client stack-id)
-        describe-r (when-not (u/anomaly? resources)
-                     (describe-stack client stack-id))]
-    (cond
-      (u/anomaly? resources)
-      (throw (response-error "Error getting resources" resources))
-
-      (u/anomaly? describe-r)
-      (throw (response-error "Error getting stack description" describe-r))
-
-      :else
-      (let [outputs-raw (-> describe-r :Outputs outputs-map-raw)
-            parameters-raw (-> describe-r :Parameters parameters-map-raw)
-            tags-raw (-> describe-r :Tags tags-map-raw)]
-        {:client client
-         :describe-stack-raw describe-r
-         :name stack-name
-         :outputs (me/map-vals :OutputValue outputs-raw)
-         :outputs-raw outputs-raw
-         :parameters (me/map-vals :ParameterValue parameters-raw)
-         :parameters-raw parameters-raw
-         :resources (resources-map resources)
-         :stack-id stack-id
-         :tags-raw tags-raw
-         :tags (me/map-vals :Value tags-raw)}))))
+  (let [resources (try (get-resources client stack-id)
+                    (catch ExceptionInfo e
+                      (throw (ex-info (str "Error getting resources: " (ex-message e))
+                               {:stack-id stack-id
+                                :stack-name stack-name}
+                               e))))
+        describe-r (describe-stack client stack-id)
+        outputs-raw (-> describe-r :Outputs outputs-map-raw)
+        parameters-raw (-> describe-r :Parameters parameters-map-raw)
+        tags-raw (-> describe-r :Tags tags-map-raw)]
+    {:client client
+     :describe-stack-raw describe-r
+     :name stack-name
+     :outputs (me/map-vals :OutputValue outputs-raw)
+     :outputs-raw outputs-raw
+     :parameters (me/map-vals :ParameterValue parameters-raw)
+     :parameters-raw parameters-raw
+     :resources (resources-map resources)
+     :stack-id stack-id
+     :tags-raw tags-raw
+     :tags (me/map-vals :Value tags-raw)}))
 
 (defn- start-stack! [{::ds/keys [config instance system]
                       :as signal}]

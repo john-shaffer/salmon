@@ -4,18 +4,8 @@
             [medley.core :as me]
             [salmon.util :as u]))
 
-(defn- pages-seq [client op-map & [next-token]]
-  (lazy-seq
-    (let [op-map (if next-token
-                   (assoc-in op-map [:request :NextToken] next-token)
-                   op-map)
-          {:keys [NextToken] :as r} (u/invoke! client op-map)]
-      (if NextToken
-        (cons r (pages-seq client op-map NextToken))
-        (list r)))))
-
 (defn- list-self-images [client]
-  (->> (pages-seq client {:op :DescribeImages
+  (->> (u/pages-seq client {:op :DescribeImages
                           :request {:MaxResults 1000
                                     :Owners ["self"]}})
     (mapcat :Images)))
@@ -25,7 +15,7 @@
     (map (comp :SnapshotId :Ebs))))
 
 (defn- list-self-snapshots [client]
-  (->> (pages-seq client {:op :DescribeSnapshots
+  (->> (u/pages-seq client {:op :DescribeSnapshots
                           :request {:MaxResults 1000
                                     :OwnerIds ["self"]}})
     (mapcat :Snapshots)))
@@ -41,7 +31,7 @@
             ; just in case AWS decides to paginate it unexpectedly.
             [existing not-found]
             #__ (try
-                  (->> (pages-seq client
+                  (->> (u/pages-seq client
                          {:op :DescribeVolumes
                           :request {:VolumeIds (keys misses)}})
                     (mapcat :Volumes)

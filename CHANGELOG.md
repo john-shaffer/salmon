@@ -1,5 +1,7 @@
 ## Unreleased
 
+- Add `salmon.util/pages-seq` for handling paginated responses.
+
 ## v0.19.0 (2024-09-16)
 
 - Fix a case where ExceptionInfos generated from aws-api invocations were missing a message.

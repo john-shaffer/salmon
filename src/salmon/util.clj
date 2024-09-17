@@ -41,6 +41,19 @@
       result
       (->ex-info result :op-map op-map))))
 
+(defn pages-seq
+  "Returns a lazy-seq of AWS API responses from [[invoke!]].
+   Lazily throws an [[ex-info]] if an operation fails."
+  [client op-map & [next-token]]
+  (lazy-seq
+    (let [op-map (if next-token
+                   (assoc-in op-map [:request :NextToken] next-token)
+                   op-map)
+          {:keys [NextToken] :as r} (invoke! client op-map)]
+      (if NextToken
+        (cons r (pages-seq client op-map NextToken))
+        (list r)))))
+
 (defn full-name
   "Returns a string representing a symbol or keyword's full name
    and namespace, if any. If given a string, returns the string
