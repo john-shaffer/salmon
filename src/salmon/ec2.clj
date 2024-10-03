@@ -84,14 +84,3 @@
                           (assoc opts :volume-ids)
                           check-volumes-existence)]
             (filter #(-> % :VolumeId volumes false?) chunk)))))))
-
-(comment
-  (doseq [region [:us-east-1 :us-east-2 :us-west-1 :us-west-2]
-          :let [client (aws/client {:api :ec2 :region region})]]
-    (let [orphans (list-orphaned-snapshots :client client)]
-      (doseq [{:keys [SnapshotId]} orphans]
-        (println "Deleting snapshot" SnapshotId)
-        (u/invoke! client
-          {:op :DeleteSnapshot
-           :request {:SnapshotId SnapshotId}}))
-      (println "Deleted" (count orphans) "orphans in" region))))

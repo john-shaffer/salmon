@@ -2,6 +2,7 @@
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
             [cognitect.aws.client.api :as aws]
+            [salmon.ec2 :as ec2]
             [salmon.util :as u]))
 
 (defn- anomaly? [response]
@@ -121,3 +122,24 @@
       (log/info "Deregistering all AMIs in" region)
       (deregister-amis! (aws/client {:api :ec2 :region region})))
     (log/error "deregister-all-amis! called without :confirm?. Doing nothing.")))
+
+(defn- delete-snapshots! [client]
+  (doseq [{:keys [SnapshotId]} (ec2/list-orphaned-snapshots :client client)]
+    (log/info "Deleting snapshot" SnapshotId)
+    (let [r (aws/invoke client
+              {:op :DeleteSnapshot
+               :request {:SnapshotId SnapshotId}})]
+      (when (anomaly? r)
+        (log/error "Failed to request snapshot deletion" SnapshotId r)))))
+
+#_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
+(defn delete-orphaned-snapshots!
+  "Deletes all snapshots that are not referenced by any AMI.
+
+   Must pass :confirm? and a seq of regions."
+  [& {:keys [confirm? regions]}]
+  (if confirm?
+    (doseq [region regions]
+      (log/info "Deleting all orphaned snapshots in" region)
+      (delete-snapshots! (aws/client {:api :ec2 :region region})))
+    (log/error "delete-orphaned-snapshots! called without :confirm?. Doing nothing.")))
