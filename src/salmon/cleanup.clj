@@ -1,7 +1,8 @@
 (ns salmon.cleanup
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [cognitect.aws.client.api :as aws]))
+            [cognitect.aws.client.api :as aws]
+            [salmon.util :as u]))
 
 (defn- anomaly? [response]
   (boolean (:cognitect.anomalies/category response)))
@@ -19,6 +20,14 @@
    "UPDATE_FAILED"
    "UPDATE_ROLLBACK_COMPLETE"
    "UPDATE_ROLLBACK_FAILED"])
+
+(def ^{:private true} deregisterable-statuses
+  ["available"
+   "invalid"
+   "transient"
+   "failed"
+   "error"
+   "disabled"])
 
 (defn- get-stacks [client & [next-token]]
   (lazy-seq
@@ -80,3 +89,35 @@
       (log/info "Deleting all CloudFormation stacks in" region)
       (delete-stacks! (aws/client {:api :cloudformation :region region})))
     (log/error "delete-all! called without :confirm?. Doing nothing.")))
+
+(defn- deregister-amis! [client]
+  (doseq [ami (->> (u/pages-seq client
+                     {:op :DescribeImages
+                      :request
+                      {:Filters
+                       [{:Name "state"
+                         :Values deregisterable-statuses}]
+                       :IncludeDeprecated true
+                       :IncludeDisabled true
+                       :MaxResults 50
+                       :Owners ["self"]}})
+                (mapcat :Images))]
+    (let [image-id (:ImageId ami)
+          _ (log/info "Deregistering AMI" image-id)
+          r (aws/invoke client
+              {:op :DeregisterImage
+               :request {:ImageId image-id}})]
+      (when (anomaly? r)
+        (log/error "Failed to request AMI deregistation" image-id r)))))
+
+#_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
+(defn deregister-all-amis!
+  "Deletes all AMIs.
+
+   Must pass :confirm? and a seq of regions."
+  [& {:keys [confirm? regions]}]
+  (if confirm?
+    (doseq [region regions]
+      (log/info "Deregistering all AMIs in" region)
+      (deregister-amis! (aws/client {:api :ec2 :region region})))
+    (log/error "deregister-all-amis! called without :confirm?. Doing nothing.")))
