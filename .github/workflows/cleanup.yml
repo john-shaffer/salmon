@@ -5,7 +5,7 @@ on:
     - cron: '5 9 * * *'  # every day at 9:05 am UTC
 
 jobs:
-  test-and-release:
+  cleanup:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
