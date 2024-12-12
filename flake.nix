@@ -2,7 +2,7 @@
   description = "salmon";
 
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/nixos-24.05";
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-24.11";
     flake-utils.url = "github:numtide/flake-utils";
   };
 
@@ -17,7 +17,7 @@
             jdk
             neil
             packer
-            python311Packages.cfn-lint
+            python312Packages.cfn-lint
             rlwrap # Used by clj
             time
           ];
