@@ -28,7 +28,7 @@
   (let [msg (aws-error-message result)]
     (throw
       (ex-info
-        (str "Anomaly during invoke: " msg)
+        (str "Anomaly during invoke: " (or msg (aws-error-code result)))
         (merge {:message msg :result result} extra-ex-data)))))
 
 (defn invoke!

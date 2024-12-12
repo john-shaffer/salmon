@@ -4,6 +4,7 @@
 - Add `salmon.cleanup/deregister-all-amis!` for cleaning up AMIs in test accounts.
 - Add `salmon.cleanup/delete-orphaned-snapshots!` for cleaning up snapshots in test accounts.
 - Use `:cognitect.aws.error/code` to find the error code in `salmon.util/aws-error-code`.
+- If there is no message, use the error code in an ex-info created by `salmon.util/->ex-info`.
 
 ## v0.19.0 (2024-09-16)
 
