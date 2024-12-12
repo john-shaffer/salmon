@@ -3,6 +3,7 @@
 !.codescene
 !.editorconfig
 !.envrc
+!.git-blame-ignore-revs
 !.github
 !.gitignore
 !.vscode
