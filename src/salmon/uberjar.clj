@@ -1,11 +1,12 @@
 (ns salmon.uberjar
-  (:require [babashka.fs :as fs]
-            [clojure.edn :as edn]
-            [clojure.tools.build.api :as b]
-            [clojure.tools.deps :as t]
-            [clojure.tools.deps.util.dir :as dir]
-            [clojure.tools.logging.readable :as logr]
-            [donut.system :as-alias ds]))
+  (:require
+   [babashka.fs :as fs]
+   [clojure.edn :as edn]
+   [clojure.tools.build.api :as b]
+   [clojure.tools.deps :as t]
+   [clojure.tools.deps.util.dir :as dir]
+   [clojure.tools.logging.readable :as logr]
+   [donut.system :as-alias ds]))
 
 (defn- build-uberjar!
   [{:as opts :keys [aliases class-dir clean? deps-file project-dir]}]

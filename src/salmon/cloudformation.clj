@@ -1,17 +1,19 @@
 (ns salmon.cloudformation
-  (:require [babashka.fs :as fs]
-            [clojure.data.json :as json]
-            [clojure.java.shell :as sh]
-            [clojure.string :as str]
-            [clojure.tools.logging.readable :as logr]
-            [cognitect.aws.client.api :as aws]
-            [donut.system :as ds]
-            [malli.core :as m]
-            [malli.error :as merr]
-            [medley.core :as me]
-            [salmon.util :as u]
-            [salmon.validation :as val])
-  (:import [clojure.lang ExceptionInfo]))
+  (:require
+   [babashka.fs :as fs]
+   [clojure.data.json :as json]
+   [clojure.java.shell :as sh]
+   [clojure.string :as str]
+   [clojure.tools.logging.readable :as logr]
+   [cognitect.aws.client.api :as aws]
+   [donut.system :as ds]
+   [malli.core :as m]
+   [malli.error :as merr]
+   [medley.core :as me]
+   [salmon.util :as u]
+   [salmon.validation :as val])
+  (:import
+   (clojure.lang ExceptionInfo)))
 
 (defn- full-name ^String [x]
   (cond

@@ -1,13 +1,14 @@
 (ns salmon.ec2
-  (:require [clojure.core.cache.wrapped :as cache]
-            [cognitect.aws.client.api :as aws]
-            [medley.core :as me]
-            [salmon.util :as u]))
+  (:require
+   [clojure.core.cache.wrapped :as cache]
+   [cognitect.aws.client.api :as aws]
+   [medley.core :as me]
+   [salmon.util :as u]))
 
 (defn- list-self-images [client]
   (->> (u/pages-seq client {:op :DescribeImages
-                          :request {:MaxResults 1000
-                                    :Owners ["self"]}})
+                            :request {:MaxResults 1000
+                                      :Owners ["self"]}})
     (mapcat :Images)))
 
 (defn- image-snapshot-ids [ami]
@@ -16,8 +17,8 @@
 
 (defn- list-self-snapshots [client]
   (->> (u/pages-seq client {:op :DescribeSnapshots
-                          :request {:MaxResults 1000
-                                    :OwnerIds ["self"]}})
+                            :request {:MaxResults 1000
+                                      :OwnerIds ["self"]}})
     (mapcat :Snapshots)))
 
 (defn- check-volumes-existence [{:keys [cache client volume-ids]}]
@@ -38,12 +39,12 @@
                     (mapv :VolumeId)
                     vector)
                   (catch clojure.lang.ExceptionInfo e
-                     ; This is ugly, but this is the most efficient way to check
-                     ; for volume existence that doesn't require loading all volumes
-                     ; into memory at once.
-                     ; This is slow to run if there are many nonexistent volumes,
-                     ; but subsequent runs should be faster as long as orphaned
-                     ; snapshots are cleaned up after each run.
+                    ; This is ugly, but this is the most efficient way to check
+                    ; for volume existence that doesn't require loading all volumes
+                    ; into memory at once.
+                    ; This is slow to run if there are many nonexistent volumes,
+                    ; but subsequent runs should be faster as long as orphaned
+                    ; snapshots are cleaned up after each run.
                     (if (= "InvalidVolume.NotFound"
                           (-> e ex-data :result :cognitect.aws.error/code))
                       [nil (re-find #"vol-\w+" (ex-message e))]

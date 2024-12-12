@@ -1,7 +1,8 @@
 (ns salmon.validation
-  (:require [com.rpl.specter :as sp]
-            [donut.system :as ds]
-            [malli.util :as mu]))
+  (:require
+   [com.rpl.specter :as sp]
+   [donut.system :as ds]
+   [malli.util :as mu]))
 
 (defn- allow-refs* [map-entry]
   (mapv

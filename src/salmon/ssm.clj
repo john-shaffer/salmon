@@ -1,8 +1,9 @@
 (ns salmon.ssm
-  (:require [cognitect.aws.client.api :as aws]
-            [donut.system :as-alias ds]
-            [medley.core :as me]
-            [salmon.util :as u]))
+  (:require
+   [cognitect.aws.client.api :as aws]
+   [donut.system :as-alias ds]
+   [medley.core :as me]
+   [salmon.util :as u]))
 
 (defn- parameters-map [params]
   (reduce

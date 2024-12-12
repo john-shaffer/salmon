@@ -1,7 +1,8 @@
 (ns salmon.route53
-  (:require [clojure.string :as str]
-            [cognitect.aws.client.api :as aws]
-            [salmon.util :as u]))
+  (:require
+   [clojure.string :as str]
+   [cognitect.aws.client.api :as aws]
+   [salmon.util :as u]))
 
 (defn- extract-hosted-zone-id
   "Returns the raw ID (like \"Z08609191OFSO5HMA450N\") from a string like

@@ -1,9 +1,10 @@
 (ns salmon.s3
-  (:require [babashka.fs :as fs]
-            [clojure.java.io :as io]
-            [clojure.string :as str]
-            [cognitect.aws.client.api :as aws]
-            [salmon.util :as u]))
+  (:require
+   [babashka.fs :as fs]
+   [clojure.java.io :as io]
+   [clojure.string :as str]
+   [cognitect.aws.client.api :as aws]
+   [salmon.util :as u]))
 
 (defn- md5 [file]
   (let [digest (java.security.MessageDigest/getInstance "MD5")
@@ -22,11 +23,11 @@
 
 (defn- get-file-details [client bucket k]
   (let [response (aws/invoke
-                  client
-                  {:op :GetObjectAttributes
-                   :request {:Bucket bucket
-                             :Key k
-                             :ObjectAttributes ["Checksum" "ETag" "ObjectSize"]}})]
+                   client
+                   {:op :GetObjectAttributes
+                    :request {:Bucket bucket
+                              :Key k
+                              :ObjectAttributes ["Checksum" "ETag" "ObjectSize"]}})]
     (cond
       (= :cognitect.anomalies/not-found (:cognitect.anomalies/category response))
       nil
@@ -40,14 +41,14 @@
 (defn- put! [client bucket k file]
   (let [{:as response :keys [ETag]}
         (aws/invoke
-         client
-         {:op :PutObject
-          :request {:Body (-> file fs/file io/input-stream)
-                    :Bucket bucket
-                    :ContentType (if (str/ends-with? (str file) ".jpg")
-                                   "image/jpeg"
-                                   "text/html")
-                    :Key k}})]
+          client
+          {:op :PutObject
+           :request {:Body (-> file fs/file io/input-stream)
+                     :Bucket bucket
+                     :ContentType (if (str/ends-with? (str file) ".jpg")
+                                    "image/jpeg"
+                                    "text/html")
+                     :Key k}})]
     (cond
       (u/anomaly? response)
       (throw (ex-info (str "AWS Error: " (u/aws-error-message response))
@@ -61,13 +62,13 @@
 
 (defn upload! [& {:keys [client bucket prefix dir]}]
   (fs/walk-file-tree
-   dir
-   {:visit-file
-    (fn [path _attrs]
-      (when-not (fs/directory? path)
-        (let [k (str prefix (fs/relativize dir path))
-              {:keys [ETag ObjectSize]} (get-file-details client bucket k)]
-          (when (or (not= ObjectSize (fs/size path))
-                    (not= ETag (md5 path)))
-            (put! client bucket k path))))
-      :continue)}))
+    dir
+    {:visit-file
+     (fn [path _attrs]
+       (when-not (fs/directory? path)
+         (let [k (str prefix (fs/relativize dir path))
+               {:keys [ETag ObjectSize]} (get-file-details client bucket k)]
+           (when (or (not= ObjectSize (fs/size path))
+                     (not= ETag (md5 path)))
+             (put! client bucket k path))))
+       :continue)}))

@@ -1,6 +1,7 @@
 (ns salmon.util
-  (:require [cognitect.aws.client.api :as aws]
-            [medley.core :as me]))
+  (:require
+   [cognitect.aws.client.api :as aws]
+   [medley.core :as me]))
 
 (defn anomaly?
   "Returns true when the response (from cognitect.aws.client.api)
@@ -88,9 +89,9 @@
     (sequential? map-or-xs) (vec map-or-xs)
     :else
     (mapv
-     (fn [[k v]]
-       {:Key (full-name k) :Value v})
-     map-or-xs)))
+      (fn [[k v]]
+        {:Key (full-name k) :Value v})
+      map-or-xs)))
 
 (defn resource
   "Returns a map representing a CloudFormation resource definition.

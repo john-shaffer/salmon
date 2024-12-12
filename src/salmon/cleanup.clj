@@ -1,9 +1,10 @@
 (ns salmon.cleanup
-  (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [cognitect.aws.client.api :as aws]
-            [salmon.ec2 :as ec2]
-            [salmon.util :as u]))
+  (:require
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [cognitect.aws.client.api :as aws]
+   [salmon.ec2 :as ec2]
+   [salmon.util :as u]))
 
 (defn- anomaly? [response]
   (boolean (:cognitect.anomalies/category response)))

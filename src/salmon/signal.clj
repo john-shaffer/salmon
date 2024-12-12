@@ -1,7 +1,8 @@
 (ns salmon.signal
-  (:require [donut.system :as ds]
-            [malli.core :as m]
-            [malli.error :as merr]))
+  (:require
+   [donut.system :as ds]
+   [malli.core :as m]
+   [malli.error :as merr]))
 
 (defn early-validate-conf
   "Handles :salmon/early-validate signal by validating `conf` against the schema
