@@ -1,5 +1,7 @@
 ## Unreleased
 
+## v0.20.0 (2024-12-12)
+
 - Add `salmon.util/pages-seq` for handling paginated responses.
 - Add `salmon.cleanup/deregister-all-amis!` for cleaning up AMIs in test accounts.
 - Add `salmon.cleanup/delete-orphaned-snapshots!` for cleaning up snapshots in test accounts.
