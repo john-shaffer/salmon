@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "@chrisoakman/standard-clojure-style": "^0.18.0"
+  }
+}

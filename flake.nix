@@ -16,6 +16,7 @@
             git
             jdk
             neil
+            nodePackages.nodejs
             packer
             python312Packages.cfn-lint
             rlwrap # Used by clj

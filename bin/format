@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+
+npx --no @chrisoakman/standard-clojure-style fix src ./*.edn

@@ -1,2 +1,11 @@
 ; https://tonsky.me/blog/clojurefmt/
-{:indents {#re ".*" [[:inner 0]]}}
+; https://github.com/oakmac/standard-clojure-style-js/blob/f0960b7903121d1afdc9ca54d9c55b48f9c2d25a/README.md#formatting-rules
+{:function-arguments-indentation :zprint
+ :indents {#re ".*" [[:inner 0]]}
+ :insert-missing-whitespace? true
+ :parallel? true
+ :remove-consecutive-blank-lines? true
+ :remove-multiple-non-indenting-spaces? true
+ :remove-surrounding-whitespace? true
+ :remove-trailing-whitespace? true
+ :sort-ns-references? true}

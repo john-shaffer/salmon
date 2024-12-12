@@ -8,4 +8,5 @@
 !.vscode
 development/src/dev/
 gcroots
+node_modules
 target/
