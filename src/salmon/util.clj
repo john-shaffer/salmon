@@ -12,7 +12,8 @@
   "Returns the error code, if present, of an AWS API response."
   [response]
   (or (some-> response :ErrorResponse :Error :Code)
-    (some-> response :Response :Errors :Error :Code)))
+    (some-> response :Response :Errors :Error :Code)
+    (:cognitect.aws.error/code response)))
 
 (defn aws-error-message
   "Returns the error message, if present, of an AWS API response."
