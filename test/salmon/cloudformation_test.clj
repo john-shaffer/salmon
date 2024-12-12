@@ -93,7 +93,7 @@
   (testing "cfn-lint works in :early-validate when there are no refs in the template"
     (is (thrown-with-msg?
           ExceptionInfo
-          #"E1001 Top level template section a is not valid"
+          #"'Resources' is a required property"
           (cause (ds/signal (system-a (stack-a :lint? true :template {:a 1}))
                    :salmon/early-validate)))))
   (testing "cfn-lint doesn't run unless :lint? is true"
@@ -102,7 +102,7 @@
   (testing "cfn-lint works in :early-validate when all refs have been resolved"
     (is (thrown-with-msg?
           ExceptionInfo
-          #"E1001 Top level template section a is not valid"
+          #"'Resources' is a required property"
           (cause (ds/signal (system-a (stack-a :lint? true :template {:a (ds/ref [:services :y])}))
                    :salmon/early-validate))))
     (testing "Pre-validation linting doesn't run for a ref to an un-started services"
@@ -131,7 +131,7 @@
                    :salmon/early-validate))))
     (is (thrown-with-msg?
           ExceptionInfo
-          #"E1001 Top level template section a is not valid"
+          #"'Resources' is a required property"
           (cause (ds/signal (system-a (stack-a :lint? true :template {:a (ds/local-ref [:nested :empty])}))
                    :salmon/early-validate)))
       "Deep local ref")))
@@ -149,7 +149,7 @@
   (testing "Templates with deep refs are validated during :start"
     (is (thrown-with-msg?
           ExceptionInfo
-          #"E1001 Top level template section a is not valid"
+          #"'Resources' is a required property"
           (cause (ds/start (system-a (stack-a :lint? true :template {:a (ds/local-ref [:empty])}))))))))
 
 (defn iam-user [name]
