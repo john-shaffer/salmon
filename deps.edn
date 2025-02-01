@@ -1,13 +1,13 @@
 {:paths ["src"]
  :deps {org.clojure/clojure {:mvn/version "1.12.0"}
-        babashka/fs {:mvn/version "0.5.23"}
-        com.cognitect.aws/api {:mvn/version "0.8.711"}
-        com.cognitect.aws/cloudformation {:mvn/version "869.2.1687.0"}
-        com.cognitect.aws/ec2 {:mvn/version "869.2.1687.0"}
-        com.cognitect.aws/endpoints {:mvn/version "1.1.12.772"}
-        com.cognitect.aws/route53 {:mvn/version "869.2.1687.0"}
-        com.cognitect.aws/s3 {:mvn/version "869.2.1687.0"}
-        com.cognitect.aws/ssm {:mvn/version "869.2.1687.0"}
+        babashka/fs {:mvn/version "0.5.24"}
+        com.cognitect.aws/api {:mvn/version "0.8.723"}
+        com.cognitect.aws/cloudformation {:mvn/version "871.2.29.35"}
+        com.cognitect.aws/ec2 {:mvn/version "871.2.29.52"}
+        com.cognitect.aws/endpoints {:mvn/version "871.2.29.52"}
+        com.cognitect.aws/route53 {:mvn/version "871.2.29.52"}
+        com.cognitect.aws/s3 {:mvn/version "871.2.29.52"}
+        com.cognitect.aws/ssm {:mvn/version "871.2.29.35"}
         com.rpl/specter {:mvn/version "1.1.4"}
         io.github.clojure/tools.build {:mvn/version "0.10.6"}
         medley/medley {:mvn/version "1.4.0"}
@@ -19,7 +19,7 @@
  :aliases
  {:antq
   {:deps
-   {com.github.liquidz/antq {:mvn/version "2.11.1250"}
+   {com.github.liquidz/antq {:mvn/version "2.11.1264"}
     org.slf4j/slf4j-nop {:mvn/version "2.0.16"}}
    :main-opts ["-m" "antq.core"]}
   :build
@@ -33,7 +33,7 @@
    :main-opts ["-m" "clj-watson.cli" "scan" "-s" "-p" "deps.edn"]}
   :test
   {:extra-deps
-   {ch.qos.logback/logback-classic {:mvn/version "1.5.12"}
+   {ch.qos.logback/logback-classic {:mvn/version "1.5.16"}
     ; Used by malli.generator/-re-gen
     com.gfredericks/test.chuck {:mvn/version "0.2.14"}
     hashp/hashp {:mvn/version "0.2.2"}
