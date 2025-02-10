@@ -90,7 +90,7 @@
     (doseq [region regions]
       (log/info "Deleting all CloudFormation stacks in" region)
       (delete-stacks! (aws/client {:api :cloudformation :region region})))
-    (log/error "delete-all! called without :confirm?. Doing nothing.")))
+    (log/error "delete-all-stacks! called without :confirm?. Doing nothing.")))
 
 (defn- deregister-amis! [client]
   (doseq [ami (->> (u/pages-seq client
