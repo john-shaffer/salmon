@@ -122,15 +122,19 @@
         (log/info "Deleted bucket" bucket-name)))))
 
 (defn- full-delete-stack! [client stack-id region]
-  (doseq [{:keys [PhysicalResourceId :ResourceStatus ResourceType]}
-          #__ (->> {:op :ListStackResources
-                    :request {:StackName stack-id}}
-                (u/pages-seq client)
-                (mapcat :StackResourceSummaries))
-          :when (not (#{"CREATE_FAILED" "DELETE_COMPLETE"} ResourceStatus))]
-    (case ResourceType
-      "AWS::S3::Bucket" (full-delete-bucket! PhysicalResourceId region)
-      nil))
+  (when (->> (aws/invoke client
+               {:op :DescribeStacks
+                :StackName stack-id})
+          :Stacks first :EnableTerminationProtection false?)
+    (doseq [{:keys [PhysicalResourceId :ResourceStatus ResourceType]}
+            #__ (->> {:op :ListStackResources
+                      :request {:StackName stack-id}}
+                  (u/pages-seq client)
+                  (mapcat :StackResourceSummaries))
+            :when (not (#{"CREATE_FAILED" "DELETE_COMPLETE"} ResourceStatus))]
+      (case ResourceType
+        "AWS::S3::Bucket" (full-delete-bucket! PhysicalResourceId region)
+        nil)))
   (let [r (aws/invoke client
             {:op :DeleteStack
              :request {:StackName stack-id}})]
