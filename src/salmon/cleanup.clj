@@ -6,9 +6,6 @@
    [salmon.ec2 :as ec2]
    [salmon.util :as u]))
 
-(defn- anomaly? [response]
-  (boolean (:cognitect.anomalies/category response)))
-
 (def ^{:private true} deleteable-statuses
   ["CREATE_COMPLETE"
    "CREATE_FAILED"
@@ -40,7 +37,7 @@
                  :request (cond->
                             {:StackStatusFilter deleteable-statuses}
                             next-token (assoc :NextToken next-token))})]
-      (if (anomaly? r)
+      (if (u/anomaly? r)
         (throw (ex-info "Error getting stacks" {:response r}))
         (concat
           StackSummaries
@@ -53,7 +50,7 @@
              :request {:StackName stack-name}})
         status (-> r :Stacks first :StackStatus)]
     (cond
-      (anomaly? r) (log/error "Error checking stack status" stack-name r)
+      (u/anomaly? r) (log/error "Error checking stack status" stack-name r)
       (= "DELETE_COMPLETE" status) (log/info "Stack deleted" stack-name)
 
       (or (str/ends-with? status "_COMPLETE")
@@ -72,7 +69,7 @@
       (let [r (aws/invoke client
                 {:op :DeleteStack
                  :request {:StackName stack-id}})]
-        (if (anomaly? r)
+        (if (u/anomaly? r)
           (log/error "Failed to request stack deletion" stack-id r)
           (log/info "Deleting stack" stack-id))
         (Thread/sleep 1000)))
@@ -109,7 +106,7 @@
           r (aws/invoke client
               {:op :DeregisterImage
                :request {:ImageId image-id}})]
-      (when (anomaly? r)
+      (when (u/anomaly? r)
         (log/error "Failed to request AMI deregistation" image-id r)))))
 
 #_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
@@ -130,7 +127,7 @@
     (let [r (aws/invoke client
               {:op :DeleteSnapshot
                :request {:SnapshotId SnapshotId}})]
-      (when (anomaly? r)
+      (when (u/anomaly? r)
         (log/error "Failed to request snapshot deletion" SnapshotId r)))))
 
 #_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
