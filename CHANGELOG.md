@@ -4,6 +4,8 @@
   to find error codes and messages in responses that return a
   top-level :Error map, such as the response to :DeleteBucket.
   They would previously return nil for these responses.
+- Add `salmon.cleanup/full-delete-all-stacks!` for deleting
+  resources in test accounts
 
 ## v0.20.0 (2024-12-12)
 

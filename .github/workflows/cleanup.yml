@@ -40,6 +40,6 @@ jobs:
         # deletes all their stuff.
         if: ${{ github.repository }} == 'john-shaffer/salmon'
         run: |
-          nix develop --impure -c clj -X salmon.cleanup/delete-all-stacks! :confirm? true :regions "[:us-east-1 :us-east-2 :us-west-2]"
+          nix develop --impure -c clj -X salmon.cleanup/full-delete-all-stacks! :confirm? true :regions "[:us-east-1 :us-east-2 :us-west-2]"
           nix develop --impure -c clj -X salmon.cleanup/deregister-all-amis! :confirm? true :regions "[:us-east-1 :us-east-2 :us-west-2]"
           nix develop --impure -c clj -X salmon.cleanup/delete-orphaned-snapshots! :confirm? true :regions "[:us-east-1 :us-east-2 :us-west-2]"

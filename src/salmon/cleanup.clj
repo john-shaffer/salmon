@@ -4,7 +4,9 @@
    [clojure.tools.logging :as log]
    [cognitect.aws.client.api :as aws]
    [salmon.ec2 :as ec2]
-   [salmon.util :as u]))
+   [salmon.util :as u])
+  (:import
+   [clojure.lang ExceptionInfo]))
 
 (def ^{:private true} deleteable-statuses
   ["CREATE_COMPLETE"
@@ -88,6 +90,80 @@
       (log/info "Deleting all CloudFormation stacks in" region)
       (delete-stacks! (aws/client {:api :cloudformation :region region})))
     (log/error "delete-all-stacks! called without :confirm?. Doing nothing.")))
+
+(defn- full-delete-bucket! [bucket-name region]
+  (let [s3 (aws/client {:api :s3 :region region})]
+    (try
+      (doseq [{:keys [Contents]}
+              #__ (u/pages-seq s3
+                    {:op :ListObjectsV2
+                     :request {:Bucket bucket-name}})
+              :when (seq Contents)
+              :let [ct (count Contents)
+                    objects (->> Contents
+                              (mapv #(select-keys % [:Key :VersionId])))
+                    r (aws/invoke s3
+                        {:op :DeleteObjects
+                         :request
+                         {:Bucket bucket-name
+                          :Delete
+                          {:Objects objects
+                           :Quiet true}}})]]
+        (if (u/anomaly? r)
+          (log/error "Failed to deleted" ct "objects in bucket" bucket-name (u/aws-error-code r) (u/aws-error-message r))
+          (log/info "Deleted" ct "objects in bucket" bucket-name)))
+      (catch ExceptionInfo e
+        (log/error e "Error listing or deleting objects in bucket" bucket-name)))
+    (let [r (aws/invoke s3
+              {:op :DeleteBucket
+               :request {:Bucket bucket-name}})]
+      (if (u/anomaly? r)
+        (log/error "Failed to delete bucket" bucket-name (u/aws-error-code r) (u/aws-error-message r))
+        (log/info "Deleted bucket" bucket-name)))))
+
+(defn- full-delete-stack! [client stack-id region]
+  (doseq [{:keys [PhysicalResourceId :ResourceStatus ResourceType]}
+          #__ (->> {:op :ListStackResources
+                    :request {:StackName stack-id}}
+                (u/pages-seq client)
+                (mapcat :StackResourceSummaries))
+          :when (not (#{"CREATE_FAILED" "DELETE_COMPLETE"} ResourceStatus))]
+    (case ResourceType
+      "AWS::S3::Bucket" (full-delete-bucket! PhysicalResourceId region)
+      nil))
+  (let [r (aws/invoke client
+            {:op :DeleteStack
+             :request {:StackName stack-id}})]
+    (if (u/anomaly? r)
+      (log/error "Failed to request stack deletion" stack-id r)
+      (log/info "Deleting stack" stack-id))))
+
+(defn- full-delete-stacks! [client region]
+  (let [stack-ids (mapv :StackId (get-stacks client))]
+    (log/info "Found" (count stack-ids) "stacks")
+    (doseq [stack-id stack-ids]
+      (full-delete-stack! client stack-id region)
+      (Thread/sleep 1000))
+    (doseq [stack-id stack-ids]
+      (wait-until-complete! client stack-id)
+      (Thread/sleep 1000))))
+
+#_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
+(defn full-delete-all-stacks!
+  "Deletes all CloudFormation stacks. Attempts to delete
+   resources such as S3 objects that would otherwise
+   prevent deleting the stack.
+
+   This will not delete stacks with termination protection
+   enabled.
+
+   Must pass :confirm? and a seq of regions."
+  [& {:keys [confirm? regions]}]
+  (if confirm?
+    (doseq [region regions]
+      (log/info "Deleting all CloudFormation stacks in" region)
+      (full-delete-stacks! (aws/client {:api :cloudformation :region region}) region))
+    (log/error "full-delete-all-stacks! called without :confirm?. Doing nothing.")))
 
 (defn- deregister-amis! [client]
   (doseq [ami (->> (u/pages-seq client
