@@ -14,6 +14,7 @@
   [response]
   (or (some-> response :ErrorResponse :Error :Code)
     (some-> response :Response :Errors :Error :Code)
+    (some-> response :Error :Code)
     (:cognitect.aws.error/code response)))
 
 (defn aws-error-message
@@ -21,6 +22,7 @@
   [response]
   (or (some-> response :ErrorResponse :Error :Message)
     (some-> response :Response :Errors :Error :Message)
+    (some-> response :Error :Message)
     (:cognitect.anomalies/message response)))
 
 (defn ->ex-info

@@ -1,5 +1,10 @@
 ## Unreleased
 
+- Update `salmon.util/aws-error-code` and `salmon.util/aws-error-message`
+  to find error codes and messages in responses that return a
+  top-level :Error map, such as the response to :DeleteBucket.
+  They would previously return nil for these responses.
+
 ## v0.20.0 (2024-12-12)
 
 - Add `salmon.util/pages-seq` for handling paginated responses.
