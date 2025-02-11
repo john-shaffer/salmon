@@ -6,6 +6,8 @@
   They would previously return nil for these responses.
 - Add `salmon.cleanup/full-delete-all-stacks!` for deleting
   resources in test accounts
+- Add `:termination-protection?` option to `salmon.cloudformation/stack`.
+  This can be used to enable or disable termination protection.  
 
 ## v0.20.0 (2024-12-12)
 

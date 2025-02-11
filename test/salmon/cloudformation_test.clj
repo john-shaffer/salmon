@@ -338,6 +338,68 @@
         "Outputs are correct")
       (ds/signal sys :salmon/delete))))
 
+(deftest test-termination-protection
+  (let [{:keys [regions]} (test/get-config)
+        stack-name (test/rand-stack-name)]
+    (doseq [region regions
+            :let [stack-tp (stack-a :lint? true
+                             :name stack-name
+                             :region region
+                             :template template-a
+                             :termination-protection? true)
+                  stack-no-tp (stack-a :lint? true
+                                :name stack-name
+                                :region region
+                                :template template-a
+                                :termination-protection? false)
+                  stack-tp-unset (stack-a :lint? true
+                                   :name stack-name
+                                   :region region
+                                   :template template-a
+                                   :termination-protection? nil)
+                  system-def (system-a stack-tp)]]
+      (test/with-system-delete [system system-def]
+        (testing "termination-protection? prevents deletion"
+          (is (thrown-with-msg?
+                ExceptionInfo
+                #"TerminationProtection is enabled"
+                (cause (ds/signal @system :salmon/delete)))))
+        (testing "nil termination-protection? leaves existing setting"
+          (reset! system (ds/start (system-a stack-tp-unset)))
+          (is (thrown-with-msg?
+                ExceptionInfo
+                #"TerminationProtection is enabled"
+                (cause (ds/signal @system :salmon/delete)))))
+        (testing "delete works after disabling termination-protection?"
+          (reset! system (ds/start (system-a stack-no-tp)))
+          (let [stack-id (-> @system ::ds/instances :services :stack-a :stack-id)]
+            (reset! system (ds/signal @system :salmon/delete))
+            (is (= {:name stack-name :stack-id stack-id}
+                  (-> @system ::ds/instances :services :stack-a)))))
+        ; Re-create stack with no termination protection
+        (reset! system (ds/start (system-a stack-no-tp)))
+        (testing "termination-protection? can be enabled for pre-existing stacks"
+          (reset! system (ds/start (system-a stack-tp)))
+          (is (thrown-with-msg?
+                ExceptionInfo
+                #"TerminationProtection is enabled"
+                (cause (ds/signal @system :salmon/delete)))))
+        (testing "termination-protection? can be disabled and enabled again"
+          (reset! system (ds/start (system-a stack-no-tp)))
+          (reset! system (ds/start (system-a stack-tp)))
+          (is (thrown-with-msg?
+                ExceptionInfo
+                #"TerminationProtection is enabled"
+                (cause (ds/signal @system :salmon/delete)))))
+        (testing "delete works after disabling termination-protection?"
+          (reset! system (ds/start (system-a stack-no-tp)))
+          (testing "nil termination-protection? leaves existing setting"
+            (reset! system (ds/start (system-a stack-tp-unset)))
+            (let [stack-id (-> @system ::ds/instances :services :stack-a :stack-id)]
+              (reset! system (ds/signal @system :salmon/delete))
+              (is (= {:name stack-name :stack-id stack-id}
+                    (-> @system ::ds/instances :services :stack-a))))))))))
+
 (deftest test-describe-stack-raw
   (let [stack-name (test/rand-stack-name)
         sys (ds/start (system-a (stack-a :capabilities #{"CAPABILITY_NAMED_IAM"} :name stack-name :template template-a)))]

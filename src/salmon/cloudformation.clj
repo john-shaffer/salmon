@@ -198,15 +198,17 @@
 (defn- cou-stack!
   "Create a new stack or update an existing one with the same name."
   [client {::ds/keys [config]} template-json]
-  (let [{:keys [capabilities name parameters tags]} config
+  (let [{:keys [capabilities name parameters tags termination-protection?]} config
         request {:Capabilities (seq capabilities)
+                 :EnableTerminationProtection (boolean termination-protection?)
                  :Parameters (aws-parameters parameters)
                  :StackName name
                  :Tags (u/tags tags)
                  :TemplateBody template-json}
         r (aws/invoke client {:op :DescribeStacks
                               :request {:StackName name}})
-        {:keys [StackId StackStatus]} (some-> r :Stacks first)]
+        [{:keys [EnableTerminationProtection StackId StackStatus]}]
+        #__ (:Stacks r)]
     (cond
       (= "ROLLBACK_COMPLETE" StackStatus)
       #__ (do
@@ -214,7 +216,17 @@
             (create-stack! client request))
       (= "ValidationError" (u/aws-error-code r)) (create-stack! client request)
       (u/anomaly? r) [r false]
-      :else (update-stack! client request StackId))))
+
+      :else
+      (do
+        (when (and (not (nil? termination-protection?))
+                (not= EnableTerminationProtection (boolean termination-protection?)))
+          (u/invoke! client
+            {:op :UpdateTerminationProtection
+             :request
+             {:EnableTerminationProtection (boolean termination-protection?)
+              :StackName StackId}}))
+        (update-stack! client request StackId)))))
 
 (defn- outputs-map-raw [outputs-seq]
   (reduce
@@ -358,7 +370,12 @@
 
    :template
    A map representing a CloudFormation template. The map
-   may contain donut.system refs."
+   may contain donut.system refs.
+
+   :termination-protection?
+   Enables or disables termination protection on the stack.
+   Ignored when nil.
+   Default: nil."
   [& {:as config}]
   {::ds/config config
    ::ds/start start-stack!
