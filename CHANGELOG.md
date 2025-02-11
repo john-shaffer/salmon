@@ -1,5 +1,7 @@
 ## Unreleased
 
+## v0.21.0 (2025-02-10)
+
 - Update `salmon.util/aws-error-code` and `salmon.util/aws-error-message`
   to find error codes and messages in responses that return a
   top-level :Error map, such as the response to :DeleteBucket.
