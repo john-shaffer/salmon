@@ -8,7 +8,10 @@
 
   outputs = { self, nixpkgs, flake-utils, ... }@inputs:
     flake-utils.lib.eachDefaultSystem (system:
-      with import nixpkgs { inherit system; }; {
+      with import nixpkgs {
+        inherit system;
+        config.allowUnfree = true;
+      }; {
         devShells.default = mkShell {
           buildInputs = [
             clj-kondo

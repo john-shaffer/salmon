@@ -13,8 +13,6 @@ jobs:
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@v16
 
-      - run: echo "NIXPKGS_ALLOW_UNFREE=1" >> $GITHUB_ENV
-
       - name: Cache Clojure dependencies
         uses: actions/cache@v4
         with:
@@ -33,13 +31,13 @@ jobs:
           mask-aws-account-id: no
 
       - name: Build devShell
-        run: nix build --impure .#devShells.x86_64-linux.default
+        run: nix build .#devShells.x86_64-linux.default
 
       - name: Run cleanup
         # Make sure that no one forks this and accidentally
         # deletes all their stuff.
         if: ${{ github.repository }} == 'john-shaffer/salmon'
         run: |
-          nix develop --impure -c clj -X salmon.cleanup/full-delete-all-stacks! :confirm? true :regions "[:us-east-1 :us-east-2 :us-west-2]"
-          nix develop --impure -c clj -X salmon.cleanup/deregister-all-amis! :confirm? true :regions "[:us-east-1 :us-east-2 :us-west-2]"
-          nix develop --impure -c clj -X salmon.cleanup/delete-orphaned-snapshots! :confirm? true :regions "[:us-east-1 :us-east-2 :us-west-2]"
+          nix develop -c clj -X salmon.cleanup/full-delete-all-stacks! :confirm? true :regions "[:us-east-1 :us-east-2 :us-west-2]"
+          nix develop -c clj -X salmon.cleanup/deregister-all-amis! :confirm? true :regions "[:us-east-1 :us-east-2 :us-west-2]"
+          nix develop -c clj -X salmon.cleanup/delete-orphaned-snapshots! :confirm? true :regions "[:us-east-1 :us-east-2 :us-west-2]"

@@ -14,8 +14,6 @@ jobs:
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@v16
 
-      - run: echo "NIXPKGS_ALLOW_UNFREE=1" >> $GITHUB_ENV
-
       - name: Cache Clojure dependencies
         uses: actions/cache@v4
         with:
@@ -34,13 +32,13 @@ jobs:
           mask-aws-account-id: no
 
       - name: Build devShell
-        run: nix build --impure .#devShells.x86_64-linux.default
+        run: nix build .#devShells.x86_64-linux.default
 
       - name: Run tests and build jar
-        run: nix develop --impure -c clojure -T:build ci :snapshot false
+        run: nix develop -c clojure -T:build ci :snapshot false
 
       - name: Deploy release jar
-        run: nix develop --impure -c clojure -T:build deploy :snapshot false
+        run: nix develop -c clojure -T:build deploy :snapshot false
         env:
           CLOJARS_PASSWORD: ${{secrets.CLOJARS_PASSWORD}}
           CLOJARS_USERNAME: ${{secrets.CLOJARS_USERNAME}}
