@@ -248,6 +248,15 @@
               :StackName StackId}}))
         (update-stack! client request StackId)))))
 
+(defn- execute-change-set! [client stack-name {:keys [changes id]}]
+  (when (seq changes)
+    ; This op only returns {}
+    (u/invoke! client
+      {:op :ExecuteChangeSet
+       :request
+       {:ChangeSetName id
+        :StackName stack-name}})))
+
 (defn- outputs-map-raw [outputs-seq]
   (reduce
     (fn [m {:keys [OutputKey] :as output}]
@@ -314,14 +323,24 @@
 
 (defn- start-stack! [{::ds/keys [config instance system]
                       :as signal}]
-  (let [{:keys [name region template]} config
-        {:keys [client]} instance
+  (let [{:keys [change-set name region template]} config
+        {inst-client :client} instance
+        client (or inst-client
+                 (:client config)
+                 (aws/client {:api :cloudformation :region region}))
         schema (-> system ::ds/component-def :schema)]
-    (if client
+    (cond
+      inst-client
       instance
-      (let [_ (validate! signal schema template)
-            client (or (:client config)
-                     (aws/client {:api :cloudformation :region region}))]
+
+      change-set
+      (let [{:keys [stack-id]} change-set
+            r (execute-change-set! client name change-set)]
+        (wait-until-complete! stack-id client)
+        (stack-instance client name stack-id))
+
+      :else
+      (do (validate! signal schema template)
         (loop [[r updated?] (cou-stack! client signal (:json (template-data :template template :validate? false)))]
           (cond
             (some-> r u/aws-error-message in-progress-error-message?)
@@ -336,7 +355,7 @@
             (do
               (when updated?
                 (wait-until-complete! name client :error-on-rollback? true))
-              (stack-instance client (:name config) r))))))))
+              (stack-instance client name r))))))))
 
 (defn- stop!
   "Stops a [[change-set]], [[stack]], or [[stack-properties]]."
@@ -368,6 +387,11 @@
    #{\"CAPABILITY_AUTO_EXPAND\"
      \"CAPABILITY_IAM\"
      \"CAPABILITY_NAMED_IAM\"}
+
+   :change-set
+   A reference to a [[change-set]] component.
+   If this is provided, the :capabilities, :parameters,
+   and :template options for the stack are ignored.
 
    :client
    An AWS client as produced by
@@ -406,10 +430,10 @@
    :salmon/early-validate
    (fn [{{::ds/keys [component-def]} ::ds/system
          :as signal}]
-     (validate! signal
-       (:salmon/early-schema component-def)
-       (-> component-def ::ds/config :template)
-       :pre? true))
+     (let [{{:keys [change-set template]} ::ds/config
+            :salmon/keys [early-schema]} component-def]
+       (when-not change-set
+         (validate! signal early-schema template :pre? true))))
    :schema stack-schema})
 
 (defn- get-stack-properties!

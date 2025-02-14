@@ -3,6 +3,9 @@
 - Add `salmon.cloudformation/change-set` to create and manage change sets
   for cloudformation stacks. This makes it easier to analyze what
   changes will be made to a stack.
+- Add `:change-set` option to `salmon.cloudformation/stack`. This allows
+  providing a change set as the source of stack updates instead of
+  providing parameters and a template.
 
 ## v0.21.0 (2025-02-10)
 
