@@ -299,16 +299,15 @@
         schema (-> system ::ds/component-def :schema)]
     (if client
       instance
-      (do
-        (validate! signal schema template)
-        (loop [client (or (:client config)
-                        (aws/client {:api :cloudformation :region region}))
-               [r updated?] (cou-stack! client signal (:json (template-data :template template :validate? false)))]
+      (let [_ (validate! signal schema template)
+            client (or (:client config)
+                     (aws/client {:api :cloudformation :region region}))]
+        (loop [[r updated?] (cou-stack! client signal (:json (template-data :template template :validate? false)))]
           (cond
             (some-> r u/aws-error-message in-progress-error-message?)
             (do
               (wait-until-complete! name client)
-              (recur client (cou-stack! client signal (:json (template-data :template template :validate? false)))))
+              (recur (cou-stack! client signal (:json (template-data :template template :validate? false)))))
 
             (u/anomaly? r)
             (throw (response-error "Error creating stack" r))
