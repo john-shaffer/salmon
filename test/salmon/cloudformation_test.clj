@@ -256,23 +256,24 @@
 (deftest test-lifecycle-while-in-progress
   (let [{:keys [regions]} (test/get-config)]
     (doseq [region regions
-            :let [bucket-def-a {:Type "AWS::S3::Bucket"
-                                :Properties {:BucketName (test/rand-bucket-name)}}
-                  bucket-def-b {:Type "AWS::S3::Bucket"
-                                :Properties {:BucketName (test/rand-bucket-name)}}
-                  template-a {:AWSTemplateFormatVersion "2010-09-09"
-                              :Resources {:BucketA bucket-def-a}}
-                  template-b {:AWSTemplateFormatVersion "2010-09-09"
-                              :Resources {:BucketB bucket-def-b}}
-                  stack-a (cfn/stack
-                            :name (test/rand-stack-name)
-                            :region region
-                            :template template-a)
-                  stack-b (assoc-in stack-a [::ds/config :template] template-b)
-                  system-def-a (assoc test/system-base
-                                 ::ds/defs {:test {:stack stack-a}})
-                  system-def-b (assoc test/system-base
-                                 ::ds/defs {:test {:stack stack-b}})]]
+            :let [stack-name (test/rand-stack-name)
+                  new-system-def
+                  #__ (fn [bucket-key]
+                        (assoc test/system-base
+                          ::ds/defs
+                          {:test
+                           {:stack
+                            (cfn/stack
+                              :name stack-name
+                              :region region
+                              :template
+                              {:AWSTemplateFormatVersion "2010-09-09"
+                               :Resources
+                               {bucket-key
+                                {:Type "AWS::S3::Bucket"
+                                 :Properties
+                                 {:BucketName (test/rand-bucket-name)}}}})}}))
+                  system-def-a (new-system-def :BucketA)]]
       (test/with-system-delete [system (assoc system-def-a :start? false)]
         ; We can't control the timing, so this may not always catch the
         ; stack during an IN_PROGRESS state. It's enough to use a resource
@@ -282,17 +283,19 @@
         (future (swap! system ds/start))
         (Thread/sleep 1000)
         (testing "stack start waits on CREATE_IN_PROGRESS state to complete"
-          (reset! system (ds/start system-def-b))
+          (reset! system (ds/start (new-system-def :BucketB)))
           (is (= {:ResourceStatus "CREATE_COMPLETE"}
                 (-> @system ::ds/instances :test :stack :resources :BucketB
                   (select-keys [:ResourceStatus])))))
+        ; Make sure system-def-a is finished creating, and then
+        ; use a new system to get an UPDATE_IN_PROGRESS state
         (reset! system (ds/start system-def-a))
-        (future (reset! system (ds/start system-def-b)))
+        (future (reset! system (ds/start (new-system-def :BucketB))))
         (Thread/sleep 1000)
         (testing "stack start waits on UPDATE_IN_PROGRESS state to complete"
-          (reset! system (ds/start system-def-a))
+          (reset! system (ds/start (new-system-def :BucketC)))
           (is (= {:ResourceStatus "CREATE_COMPLETE"}
-                (-> @system ::ds/instances :test :stack :resources :BucketA
+                (-> @system ::ds/instances :test :stack :resources :BucketC
                   (select-keys [:ResourceStatus])))))
         (let [sys @system
               stack (-> sys ::ds/instances :test :stack (select-keys [:name :stack-id]))
