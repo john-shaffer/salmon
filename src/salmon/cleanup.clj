@@ -6,7 +6,7 @@
    [salmon.ec2 :as ec2]
    [salmon.util :as u])
   (:import
-   [clojure.lang ExceptionInfo]))
+   (clojure.lang ExceptionInfo)))
 
 (def ^{:private true} deleteable-statuses
   ["CREATE_COMPLETE"
