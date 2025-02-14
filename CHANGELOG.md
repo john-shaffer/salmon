@@ -1,5 +1,7 @@
 ## Unreleased
 
+## v0.22.0 (2025-02-14)
+
 - Add `salmon.cloudformation/change-set` to create and manage change sets
   for cloudformation stacks. This makes it easier to analyze what
   changes will be made to a stack.
