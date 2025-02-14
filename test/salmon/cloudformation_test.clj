@@ -302,7 +302,6 @@
               _ (future (reset! system (ds/start system-def-a)))
               _ (Thread/sleep 1000)
               updated (future (reset! system (ds/signal sys :salmon/delete)))]
-          (Thread/sleep 1000)
           (testing "stack deletion waits on DELETE_IN_PROGRESS state to complete"
             (is (= stack
                   (-> (reset! system (ds/signal sys :salmon/delete))
