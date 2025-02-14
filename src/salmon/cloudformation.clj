@@ -162,7 +162,7 @@
         (u/anomaly? r)
         (if (and ignore-non-existence?
               (str/includes? (u/aws-error-message r) "does not exist"))
-          nil
+          status
           (throw (response-error "Error getting stack status" r)))
 
         (str/ends-with? status "_FAILED")
@@ -174,7 +174,7 @@
           (str/includes? status "ROLLBACK"))
         (throw (rollback-error stack-name client status))
 
-        (str/ends-with? status "_COMPLETE") nil
+        (str/ends-with? status "_COMPLETE") status
 
         :else
         (do
@@ -186,11 +186,13 @@
                                :request {:StackName name}})]
     (cond
       (some-> r u/aws-error-message in-progress-error-message?)
-      (do
-        (wait-until-complete! name client)
-        (logr/info "Deleting stack" name)
-        (recur (aws/invoke client {:op :DeleteStack
-                                   :request {:StackName name}})))
+      (let [status (wait-until-complete! name client :ignore-non-existence? true)]
+        (if (= "DELETE_COMPLETE" status)
+          (logr/info "Skipping stack delete because it was already deleted" name)
+          (do
+            (logr/info "Deleting stack" name)
+            (recur (aws/invoke client {:op :DeleteStack
+                                       :request {:StackName name}})))))
 
       (u/anomaly? r)
       (throw (response-error "Error deleting stack" r))

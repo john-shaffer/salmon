@@ -6,6 +6,10 @@
 - Add `:change-set` option to `salmon.cloudformation/stack`. This allows
   providing a change set as the source of stack updates instead of
   providing parameters and a template.
+- Change the behavior of a stack receiving a :salmon/delete signal
+  when the stack has already been deleting. Previously, it could throw
+  an exception. This has been changed so that no exception is thrown
+  and the signal completes successfully.
 
 ## v0.21.0 (2025-02-10)
 
