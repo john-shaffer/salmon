@@ -23,9 +23,13 @@
     :else (throw (ex-info "full-name argument must be a String, Keyword, or Symbol"
                    {:arg x}))))
 
+(def ^{:doc "A regular expression for allowed CloudFormation change-set names"}
+  re-change-set-name
+  #"^[a-zA-Z][-a-zA-Z0-9]{0,127}$")
+
 (def ^{:doc "A regular expression for allowed CloudFormation stack names"}
   re-stack-name
-  #"^[a-zA-Z][-a-zA-Z0-9]{0,127}$")
+  re-change-set-name)
 
 (def ^:private re-in-progress-error-message
   #"status [A-Z_]+_IN_PROGRESS")
@@ -53,6 +57,22 @@
         {:json template-json}
         (throw (ex-info errors {:json template-json})))
       {:json template-json})))
+
+(def ^{:private true}
+  change-set-schema
+  [:map
+   [:capabilities
+    {:optional true}
+    [:maybe
+     [:set [:enum "CAPABILITY_AUTO_EXPAND" "CAPABILITY_IAM" "CAPABILITY_NAMED_IAM"]]]]
+   [:name
+    [:and
+     [:string {:min 1 :max 128}]
+     [:re re-change-set-name]]]
+   [:stack-name
+    [:and
+     [:string {:min 1 :max 128}]
+     [:re re-stack-name]]]])
 
 (def ^{:private true}
   stack-schema
@@ -318,8 +338,10 @@
                 (wait-until-complete! name client :error-on-rollback? true))
               (stack-instance client (:name config) r))))))))
 
-(defn- stop! [{::ds/keys [instance]}]
-  (select-keys instance [:name :stack-id]))
+(defn- stop!
+  "Stops a [[change-set]], [[stack]], or [[stack-properties]]."
+  [{::ds/keys [instance]}]
+  (select-keys instance [:id :name :stack-id :stack-name]))
 
 (defn- delete!
   [{:keys [::ds/instance]
@@ -466,3 +488,148 @@
    :salmon/delete stop!
    :salmon/early-schema (val/allow-refs stack-properties-schema)
    :schema stack-properties-schema})
+
+(defn- wait-until-complete-change-set!
+  [change-set-name
+   stack-name
+   client
+   & {:keys [fail-on-no-changes? ignore-non-existence?]}]
+  (logr/info "Waiting for change set to enter a COMPLETE or FAILED status" stack-name)
+  (loop []
+    (let [{:as r :keys [Changes Status StatusReason]}
+          #__ (aws/invoke client {:op :DescribeChangeSet
+                                  :request
+                                  {:ChangeSetName change-set-name
+                                   :StackName stack-name}})]
+      (cond
+        (and (not fail-on-no-changes?)
+          (= "FAILED" Status)
+          (empty? Changes)
+          (str/includes? StatusReason "didn't contain changes"))
+        r
+
+        (#{"DELETE_FAILED" "FAILED"} Status)
+        (throw (ex-info (str "Change set " change-set-name " is in failed state: " Status)
+                 {:change-set-name change-set-name
+                  :stack-name stack-name
+                  :status Status}))
+
+        (#{"CREATE_COMPLETE" "DELETE_COMPLETE"} Status)
+        r
+
+        :else
+        (do
+          (Thread/sleep 5000)
+          (recur))))))
+
+(defn- create-change-set! [client {::ds/keys [config]} template-json]
+  (let [{:keys [capabilities name parameters stack-name tags]} config
+        request {:Capabilities (seq capabilities)
+                 :ChangeSetName name
+                 :Parameters (aws-parameters parameters)
+                 :StackName stack-name
+                 :Tags (u/tags tags)
+                 :TemplateBody template-json}]
+    (logr/info "Creating change-set" name)
+    (aws/invoke client {:op :CreateChangeSet :request request})))
+
+(defn- start-change-set! [{::ds/keys [config instance system]
+                           :as signal}]
+  (let [{:keys [fail-on-no-changes? name region stack-name template]} config
+        {:keys [client]} instance
+        schema (-> system ::ds/component-def :schema)]
+    (if client
+      instance
+      (let [_ (validate! signal schema template)
+            client (or (:client config)
+                     (aws/client {:api :cloudformation :region region}))
+            {:as r :keys [Id StackId]}
+            #__ (create-change-set! client signal (:json (template-data :template template :validate? false)))]
+        (if (u/anomaly? r)
+          (throw (response-error "Error creating change set" r))
+          (let [{:keys [Changes]}
+                #__ (wait-until-complete-change-set! Id StackId client
+                      :fail-on-no-changes? fail-on-no-changes?)]
+            {:changes Changes
+             :client client
+             :id Id
+             :name name
+             :stack-id StackId
+             :stack-name stack-name}))))))
+
+(defn- delete-change-set!
+  [{:keys [::ds/instance]
+    {:keys [name stack-name]} ::ds/config
+    {:keys [client]} ::ds/instance
+    :as signal}]
+  (if-not client
+    instance
+    (do
+      (u/invoke! client
+        {:op :DeleteChangeSet
+         :request
+         {:ChangeSetName name
+          :StackName stack-name}})
+      (wait-until-complete-change-set! name stack-name client)
+      (stop! signal))))
+
+(defn change-set
+  "Returns a component that creates a CloudFormation ChangeSet.
+
+   Supported signals: ::ds/start, ::ds/stop, :salmon/delete,
+   :salmon/early-validate
+
+   config options:
+
+   :capabilities
+   A set of IAM capabilities used when creating or
+   updating the ChangeSet. Values must be in
+   #{\"CAPABILITY_AUTO_EXPAND\"
+     \"CAPABILITY_IAM\"
+     \"CAPABILITY_NAMED_IAM\"}
+
+   :client
+   An AWS client as produced by
+   `cognitect.aws.client.api/client`
+
+   :fail-on-no-changes?
+   Throw an error if the change set does not contain any
+   changes compared to an existing stack, if present.
+   Default: false
+
+   :lint?
+   Validate the template using cfn-lint.
+   Default: false.
+
+   :name
+   The name of the CloudFormation ChangeSet. Must match the
+   regex #\"^[a-zA-Z][-a-zA-Z0-9]{0,127}$\"
+
+   :parameters
+   A map of parameters used when creating the ChangeSet.
+
+   :region
+   The AWS region to create the ChangeSet in. Ignored when
+   :client is present.
+
+   :stack-name
+   The name of the CloudFormation stack. Must match the
+   regex #\"^[a-zA-Z][-a-zA-Z0-9]{0,127}$\"
+
+   :template
+   A map representing a CloudFormation template. The map
+   may contain donut.system refs."
+  [& {:as config}]
+  {::ds/config config
+   ::ds/start start-change-set!
+   ::ds/stop stop!
+   :salmon/delete delete-change-set!
+   :salmon/early-schema (val/allow-refs change-set-schema)
+   :salmon/early-validate
+   (fn [{{::ds/keys [component-def]} ::ds/system
+         :as signal}]
+     (validate! signal
+       (:salmon/early-schema component-def)
+       (-> component-def ::ds/config :template)
+       :pre? true))
+   :schema change-set-schema})

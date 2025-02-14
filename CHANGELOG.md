@@ -1,5 +1,9 @@
 ## Unreleased
 
+- Add `salmon.cloudformation/change-set` to create and manage change sets
+  for cloudformation stacks. This makes it easier to analyze what
+  changes will be made to a stack.
+
 ## v0.21.0 (2025-02-10)
 
 - Update `salmon.util/aws-error-code` and `salmon.util/aws-error-message`
