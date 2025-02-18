@@ -1,5 +1,7 @@
 ## Unreleased
 
+## v0.23.0 (2025-02-18)
+
 - (breaking) Fix that `salmon.util/->ex-info` should return an
   ex-info, not throw it.
 - Fix a bug where stack and change set names could not be refs.
