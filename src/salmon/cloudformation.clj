@@ -95,14 +95,16 @@
      [:re re-stack-name]]]])
 
 (defn- validate!
-  [{::ds/keys [component-id system]}
-   schema
-   template
+  [{:as signal ::ds/keys [component-id system]}
    & {:keys [pre?]}]
-  (let [{::ds/keys [config]} (if pre? (::ds/component-def system) system)
+  (let [{::ds/keys [component-def]} system
+        {::ds/keys [config]} (if pre? component-def signal)
+        schema (if pre?
+                 (:salmon/early-schema component-def)
+                 (:schema component-def))
         errors (and schema (m/explain schema config))
-        resolved-template (val/resolve-refs system component-id template)
-        {:keys [lint?]} config]
+        {:keys [lint? template]} config
+        resolved-template (val/resolve-refs system component-id template)]
     (cond
       errors (throw
                (ex-info (str "Validation failed: " (merr/humanize errors))
@@ -328,14 +330,13 @@
      :tags-raw tags-raw
      :tags (me/map-vals :Value tags-raw)}))
 
-(defn- start-stack! [{::ds/keys [config instance system]
+(defn- start-stack! [{::ds/keys [config instance]
                       :as signal}]
   (let [{:keys [change-set name region template]} config
         {inst-client :client} instance
         client (or inst-client
                  (:client config)
-                 (aws/client {:api :cloudformation :region region}))
-        schema (-> system ::ds/component-def :schema)]
+                 (aws/client {:api :cloudformation :region region}))]
     (cond
       inst-client
       instance
@@ -347,7 +348,7 @@
         (stack-instance client name stack-id))
 
       :else
-      (do (validate! signal schema template)
+      (do (validate! signal)
         (loop [[r updated?] (cou-stack! client signal (:json (template-data :template template :validate? false)))]
           (cond
             (some-> r u/aws-error-message in-progress-error-message?)
@@ -437,10 +438,9 @@
    :salmon/early-validate
    (fn [{{::ds/keys [component-def]} ::ds/system
          :as signal}]
-     (let [{{:keys [change-set template]} ::ds/config
-            :salmon/keys [early-schema]} component-def]
+     (let [{{:keys [change-set]} ::ds/config} component-def]
        (when-not change-set
-         (validate! signal early-schema template :pre? true))))
+         (validate! signal :pre? true))))
    :schema stack-schema})
 
 (defn- get-stack-properties!
@@ -564,14 +564,13 @@
     (logr/info "Creating change-set" name)
     (aws/invoke client {:op :CreateChangeSet :request request})))
 
-(defn- start-change-set! [{::ds/keys [config instance system]
+(defn- start-change-set! [{::ds/keys [config instance]
                            :as signal}]
   (let [{:keys [fail-on-no-changes? name region stack-name template]} config
-        {:keys [client]} instance
-        schema (-> system ::ds/component-def :schema)]
+        {:keys [client]} instance]
     (if client
       instance
-      (let [_ (validate! signal schema template)
+      (let [_ (validate! signal)
             client (or (:client config)
                      (aws/client {:api :cloudformation :region region}))
             {:as r :keys [Id StackId]}
@@ -657,10 +656,6 @@
    :salmon/delete delete-change-set!
    :salmon/early-schema (val/allow-refs change-set-schema)
    :salmon/early-validate
-   (fn [{{::ds/keys [component-def]} ::ds/system
-         :as signal}]
-     (validate! signal
-       (:salmon/early-schema component-def)
-       (-> component-def ::ds/config :template)
-       :pre? true))
+   (fn [signal]
+     (validate! signal :pre? true))
    :schema change-set-schema})
