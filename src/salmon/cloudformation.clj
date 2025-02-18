@@ -39,7 +39,7 @@
     (boolean (re-find re-in-progress-error-message s))))
 
 (defn- cfn-lint! [template]
-  (fs/with-temp-dir [dir {:prefix (str "salmon-cloudformation")}]
+  (fs/with-temp-dir [dir {:prefix "salmon-cloudformation"}]
     (let [f (fs/create-file (fs/path dir "cloudformation.template"))]
       (spit (fs/file f) template)
       (let [{:keys [err exit out]} (sh/sh "cfn-lint" (str f))]
@@ -342,8 +342,8 @@
       instance
 
       change-set
-      (let [{:keys [stack-id]} change-set
-            r (execute-change-set! client name change-set)]
+      (let [{:keys [stack-id]} change-set]
+        (execute-change-set! client name change-set)
         (wait-until-complete! stack-id client)
         (stack-instance client name stack-id))
 
@@ -524,7 +524,7 @@
   [change-set-name
    stack-name
    client
-   & {:keys [fail-on-no-changes? ignore-non-existence?]}]
+   & {:keys [fail-on-no-changes?]}]
   (logr/info "Waiting for change set to enter a COMPLETE or FAILED status" stack-name)
   (loop []
     (let [{:as r :keys [Changes Status StatusReason]}

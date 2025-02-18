@@ -1,7 +1,6 @@
 (ns salmon.ec2
   (:require
    [clojure.core.cache.wrapped :as cache]
-   [cognitect.aws.client.api :as aws]
    [medley.core :as me]
    [salmon.util :as u]))
 
