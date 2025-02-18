@@ -436,11 +436,8 @@
    :salmon/delete delete!
    :salmon/early-schema (val/allow-refs stack-schema)
    :salmon/early-validate
-   (fn [{{::ds/keys [component-def]} ::ds/system
-         :as signal}]
-     (let [{{:keys [change-set]} ::ds/config} component-def]
-       (when-not change-set
-         (validate! signal :pre? true))))
+   (fn [signal]
+     (validate! signal :pre? true))
    :schema stack-schema})
 
 (defn- get-stack-properties!

@@ -96,7 +96,17 @@
                 :name (ds/local-ref [:stack-name])
                 :template {:a 1}))
           (assoc-in [::ds/defs :services :stack-name] "StackA")
-          (ds/signal :salmon/early-validate)))))
+          (ds/signal :salmon/early-validate)))
+    (is (thrown-with-msg?
+          ExceptionInfo
+          #"Validation failed"
+          (-> (system-a
+                (stack-a
+                  :change-set (ds/local-ref [:change-set])
+                  :name "000"))
+            (ds/signal :salmon/early-validate)
+            cause))
+      "stack is validated when :change-set option is used")))
 
 (deftest test-early-validation-linting
   (testing "cfn-lint works in :early-validate when there are no refs in the template"

@@ -12,6 +12,8 @@
 - Support creating change sets for stacks that do not exist yet.
   Previously, change sets could only be created for stacks that
   already existed.
+- Fix an issue where stack early validation would not run if
+  the :change-set option was present.
 
 ## v0.22.0 (2025-02-14)
 
