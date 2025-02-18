@@ -29,10 +29,9 @@
   "Returns an [[ex-info]] that represents a failed AWS API response."
   [result & {:as extra-ex-data}]
   (let [msg (aws-error-message result)]
-    (throw
-      (ex-info
-        (str "Anomaly during invoke: " (or msg (aws-error-code result)))
-        (merge {:message msg :result result} extra-ex-data)))))
+    (ex-info
+      (str "Anomaly during invoke: " (or msg (aws-error-code result)))
+      (merge {:message msg :result result} extra-ex-data))))
 
 (defn invoke!
   "Calls the AWS API and returns a response, or throws an [[ex-info]]
@@ -43,7 +42,7 @@
   (let [result (aws/invoke client op-map)]
     (if-not (:cognitect.anomalies/category result)
       result
-      (->ex-info result :op-map op-map))))
+      (throw (->ex-info result :op-map op-map)))))
 
 (defn pages-seq
   "Returns a lazy-seq of AWS API responses from [[invoke!]].
