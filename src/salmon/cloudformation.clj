@@ -594,13 +594,20 @@
     :as signal}]
   (if-not client
     instance
-    (do
-      (u/invoke! client
-        {:op :DeleteChangeSet
-         :request
-         {:ChangeSetName name
-          :StackName stack-name}})
-      (wait-until-complete-change-set! name stack-name client)
+    (let [op-map {:op :DeleteChangeSet
+                  :request
+                  {:ChangeSetName name
+                   :StackName stack-name}}
+          r (aws/invoke client op-map)
+          dne? (and (u/anomaly? r)
+                 (= "ValidationError" (u/aws-error-code r))
+                 (str/includes? (u/aws-error-message r) "does not exist"))]
+      (cond
+        ; If the stack or change set has already been deleted, our
+        ; work is done.
+        dne? nil
+        (u/anomaly? r) (throw (u/->ex-info r :op-map op-map))
+        :else (wait-until-complete-change-set! name stack-name client))
       (stop! signal))))
 
 (defn change-set

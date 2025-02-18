@@ -3,6 +3,12 @@
 - (breaking) Fix that `salmon.util/->ex-info` should return an
   ex-info, not throw it.
 - Fix a bug where stack and change set names could not be refs.
+- When attempting to delete a change set and the stack or change
+  set no longer exists, return early rather than throwing an error.
+  This is a common situation because in the most natural
+  configuration, the stack will receive a delete signal before the
+  change set does. When the change set attempts to delete itself,
+  it will find that the stack has already been deleted.
 
 ## v0.22.0 (2025-02-14)
 
