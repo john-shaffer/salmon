@@ -560,9 +560,16 @@
                  :Parameters (aws-parameters parameters)
                  :StackName stack-name
                  :Tags (u/tags tags)
-                 :TemplateBody template-json}]
-    (logr/info "Creating change-set" name)
-    (aws/invoke client {:op :CreateChangeSet :request request})))
+                 :TemplateBody template-json}
+        _ (logr/info "Creating change-set" name)
+        r (aws/invoke client {:op :CreateChangeSet :request request})]
+    (if (and (u/anomaly? r)
+          (= "ValidationError" (u/aws-error-code r))
+          (str/includes? (u/aws-error-message r) "does not exist"))
+      (aws/invoke client
+        {:op :CreateChangeSet
+         :request (assoc request :ChangeSetType "CREATE")})
+      r)))
 
 (defn- start-change-set! [{::ds/keys [config instance]
                            :as signal}]

@@ -9,6 +9,9 @@
   configuration, the stack will receive a delete signal before the
   change set does. When the change set attempts to delete itself,
   it will find that the stack has already been deleted.
+- Support creating change sets for stacks that do not exist yet.
+  Previously, change sets could only be created for stacks that
+  already existed.
 
 ## v0.22.0 (2025-02-14)
 

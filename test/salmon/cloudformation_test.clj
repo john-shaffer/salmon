@@ -682,3 +682,34 @@
       (reset! system system-def)
       ; start will wait for _COMPLETE status before attempting to update
       (swap! system ds/start))))
+
+(deftest test-change-set
+  (let [{:keys [regions]} (test/get-config)
+        stack-name (test/rand-stack-name)]
+    (doseq [region regions
+            :let [system-def
+                  #__ (assoc test/system-base
+                        ::ds/defs
+                        {:service
+                         {:change-set
+                          (cfn/change-set
+                            {:name (test/rand-stack-name)
+                             :region region
+                             :stack-name stack-name
+                             :template template-a})
+                          :stack
+                          (cfn/stack
+                            {:change-set (ds/local-ref [:change-set])
+                             :name stack-name
+                             :region region})}})]]
+      (test/with-system-delete [sys system-def]
+        (testing "A stack can be created from a change set"
+          (let [{:keys [change-set stack]} (-> @sys ::ds/instances :service)]
+            (is (->> (select-keys change-set [:id :name :stack-id :stack-name])
+                  vals
+                  (every? string?))
+              "change-set returns expected names and IDs")
+            (is (= (:stack-id change-set)
+                  (:stack-id stack)))
+            (is (= "CREATE_COMPLETE"
+                  (-> stack :resources :OAI1 :ResourceStatus)))))))))
