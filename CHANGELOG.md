@@ -1,5 +1,7 @@
 ## Unreleased
 
+- Fix a bug where stack and change set names could not be refs.
+
 ## v0.22.0 (2025-02-14)
 
 - Add `salmon.cloudformation/change-set` to create and manage change sets

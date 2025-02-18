@@ -89,6 +89,15 @@
           (cause (ds/signal (system-a (stack-a :template {}))
                    :salmon/early-validate))))))
 
+(deftest test-early-schema
+  (testing "stack :name can be a ref"
+    (is (-> (system-a
+              (stack-a
+                :name (ds/local-ref [:stack-name])
+                :template {:a 1}))
+          (assoc-in [::ds/defs :services :stack-name] "StackA")
+          (ds/signal :salmon/early-validate)))))
+
 (deftest test-early-validation-linting
   (testing "cfn-lint works in :early-validate when there are no refs in the template"
     (is (thrown-with-msg?
@@ -135,6 +144,19 @@
           (cause (ds/signal (system-a (stack-a :lint? true :template {:a (ds/local-ref [:nested :empty])}))
                    :salmon/early-validate)))
       "Deep local ref")))
+
+(deftest test-validation
+  (testing "stack name must be a string"
+    (is (thrown-with-msg?
+          ExceptionInfo
+          #"Validation failed"
+          (-> (system-a
+                (stack-a
+                  :name (ds/local-ref [:stack-name])
+                  :template {:a 1}))
+            (assoc-in [::ds/defs :services :stack-name] {})
+            ds/start
+            cause)))))
 
 (deftest test-validation-linting
   (testing "ref templates are validated during :start"

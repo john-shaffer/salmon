@@ -94,8 +94,13 @@
      [:string {:min 1 :max 128}]
      [:re re-stack-name]]]])
 
-(defn- validate! [{::ds/keys [component-id config system]} schema template & {:keys [pre?]}]
-  (let [errors (and schema (m/explain schema config))
+(defn- validate!
+  [{::ds/keys [component-id system]}
+   schema
+   template
+   & {:keys [pre?]}]
+  (let [{::ds/keys [config]} (if pre? (::ds/component-def system) system)
+        errors (and schema (m/explain schema config))
         resolved-template (val/resolve-refs system component-id template)
         {:keys [lint?]} config]
     (cond
