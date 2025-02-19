@@ -1,5 +1,7 @@
 ## Unreleased
 
+- Fix stack early-validate failing when using a change-set
+
 ## v0.23.0 (2025-02-18)
 
 - (breaking) Fix that `salmon.util/->ex-info` should return an

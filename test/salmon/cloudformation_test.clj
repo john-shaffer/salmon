@@ -712,6 +712,8 @@
                             {:change-set (ds/local-ref [:change-set])
                              :name stack-name
                              :region region})}})]]
+      (is (ds/signal system-def :salmon/early-validate)
+        "early-validate succeeds")
       (test/with-system-delete [sys system-def]
         (testing "A stack can be created from a change set"
           (let [{:keys [change-set stack]} (-> @sys ::ds/instances :service)]

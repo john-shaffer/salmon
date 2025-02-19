@@ -103,12 +103,14 @@
                  (:salmon/early-schema component-def)
                  (:schema component-def))
         errors (and schema (m/explain schema config))
-        {:keys [lint? template]} config
+        {:keys [change-set lint? template]} config
         resolved-template (val/resolve-refs system component-id template)]
     (cond
       errors (throw
                (ex-info (str "Validation failed: " (merr/humanize errors))
                  {:errors errors}))
+      ; If we have a change-set, then we don't use a template directly
+      change-set nil
       (and pre? (not (val/refs-resolveable? system component-id template))) nil
       (not (map? resolved-template)) (throw (ex-info "Template must be a map."
                                               {:template resolved-template}))
