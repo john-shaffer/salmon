@@ -1,5 +1,7 @@
 ## Unreleased
 
+## v0.23.1 (2025-02-18)
+
 - Fix stack early-validate failing when using a change-set
 
 ## v0.23.0 (2025-02-18)
