@@ -1,5 +1,8 @@
 ## Unreleased
 
+- Fix that `salmon.signal/early-validate/conf` would not
+  validate properly when refs were in the component's config.
+
 ## v0.23.1 (2025-02-18)
 
 - Fix stack early-validate failing when using a change-set

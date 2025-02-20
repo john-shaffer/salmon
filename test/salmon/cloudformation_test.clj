@@ -551,9 +551,17 @@
           ExceptionInfo
           #"Validation failed.*name"
           (cause (ds/signal (system-b
-                              (stack-a :template template-a)
-                              (stack-properties-a))
-                   :salmon/early-validate))))))
+                              {}
+                              (stack-properties-a
+                                :name "000"))
+                   :salmon/early-validate)))))
+  (testing "stack-properties :name can be a ref"
+    (is (-> (system-b
+              {}
+              (stack-properties-a
+                :name (ds/local-ref [:stack-name])))
+          (assoc-in [::ds/defs :services :stack-name] "StackA")
+          (ds/signal :salmon/early-validate)))))
 
 (deftest test-stack-properties
   (let [stack-name (test/rand-stack-name)
