@@ -1,5 +1,7 @@
 ## Unreleased
 
+## v0.23.2 (2025-02-20)
+
 - Fix that `salmon.signal/early-validate/conf` would not
   validate properly when refs were in the component's config.
 
