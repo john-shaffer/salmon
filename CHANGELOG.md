@@ -1,5 +1,7 @@
 ## Unreleased
 
+## v0.24.0 (2025-02-22)
+
 - (breaking) Change the behavior when updating a stack from a change-set
   to match the behavior when creating a stack from a template.
   - If the stack is in an IN_PROGRESS state when attempting to update,
