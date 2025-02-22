@@ -38,16 +38,19 @@
   (or (str/includes? s "_IN_PROGRESS state")
     (boolean (re-find re-in-progress-error-message s))))
 
-(defn- cfn-lint! [{:keys [region]} template]
+(defn- cfn-lint! [{:keys [region regions]} template]
   (fs/with-temp-dir [dir {:prefix "salmon-cloudformation"}]
     (let [f (fs/create-file (fs/path dir "cloudformation.template"))]
       (spit (fs/file f) template)
-      (let [{:keys [err exit out]}
+      (let [regions (or regions (when region [region]))
+            {:keys [err exit out]}
             #__ (apply sh/sh
                   "cfn-lint"
                   (str f)
-                  (when (some-> region ds/ref? not)
-                    ["-r" (name region)]))]
+                  (when (and (seq regions)
+                          (not (some ds/ref? regions)))
+                    (cons "-r"
+                      (map name regions))))]
         (cond
           (zero? exit) nil
           (empty? err) out
@@ -58,7 +61,11 @@
   [config
    & {:keys [template validate?]
       :or {validate? true}}]
-  (let [template-json (json/write-str template)]
+  ; unwrap {:template {}} from the template component
+  ; while allowing direct template data specification when not using
+  ; a template component
+  (let [template (:template template template)
+        template-json (json/write-str template)]
     (if-let [errors (and validate? (cfn-lint! config template-json))]
       (if (str/blank? errors)
         {:json template-json}
@@ -101,6 +108,18 @@
      [:string {:min 1 :max 128}]
      [:re re-stack-name]]]])
 
+(def ^{:private true}
+  template-config-schema
+  [:map
+   [:lint?
+    {:optional true}]
+   [:regions
+    {:optional true}
+    [:sequential [:or :keyword :string]]]
+   [:template
+    [:or ds/DonutRef
+     [:map]]]])
+
 (defn- validate!
   [{:as signal ::ds/keys [component-id system]}
    & {:keys [pre?]}]
@@ -128,6 +147,41 @@
                 (throw (ex-info (str "Template validation failed: " message)
                          {:message message
                           :template resolved-template})))))))
+
+(defn- start-template!
+  [{::ds/keys [config instance]
+    :as signal}]
+  (or instance
+    (let [{:keys [template]} config]
+      (validate! signal)
+      {:template template})))
+
+(defn template
+  "Returns a component that defines and validates a CloudFormation template.
+
+   Supported signals: ::ds/start, ::ds/stop, :salmon/early-validate
+
+   config options:
+
+   :lint?
+   Validate the template using cfn-lint.
+   Default: false.
+
+   :regions
+   The AWS regions to consider when linting the template.
+   Default: nil.
+
+   :template
+   A map representing a CloudFormation template. The map
+   may contain donut.system refs."
+  [& {:as config}]
+  {::ds/config config
+   ::ds/config-schema template-config-schema
+   ::ds/start start-template!
+   ::ds/stop (constantly nil)
+   :salmon/early-validate
+   (fn [signal]
+     (validate! signal :pre? true))})
 
 (defn- response-error [message response]
   (ex-info (str message

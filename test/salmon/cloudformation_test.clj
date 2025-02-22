@@ -66,8 +66,29 @@
          :name (or name (test/rand-stack-name))
          :template template})}}))
 
+(defn template-system [& {:as opts}]
+  (assoc
+    test/system-base
+    ::ds/defs
+    {:t
+     {:template
+      (cfn/template opts)}}))
+
 (deftest test-blank-template-early-validation
   (testing "Blank templates should fail validation"
+    (testing "using template component"
+      (is (thrown-with-msg?
+            ExceptionInfo
+            #"Template must be a map"
+            (-> (template-system :lint? true :template nil)
+              (ds/signal :salmon/early-validate)
+              cause)))
+      (is (thrown-with-msg?
+            ExceptionInfo
+            #"Template must not be empty"
+            (-> (template-system :lint? true :template {})
+              (ds/signal :salmon/early-validate)
+              cause))))
     (is (thrown-with-msg?
           ExceptionInfo
           #"Template must be a map"
@@ -113,9 +134,17 @@
     (is (thrown-with-msg?
           ExceptionInfo
           #"'Resources' is a required property"
+          (-> (template-system :lint? true :template {:a 1})
+            (ds/signal :salmon/early-validate)
+            cause)))
+    (is (thrown-with-msg?
+          ExceptionInfo
+          #"'Resources' is a required property"
           (cause (ds/signal (system-a (stack-a :lint? true :template {:a 1}))
                    :salmon/early-validate)))))
   (testing "cfn-lint doesn't run unless :lint? is true"
+    (is (ds/signal (template-system :template {:a 1})
+          :salmon/early-validate))
     (is (ds/signal (system-a (stack-a :template {:a 1}))
           :salmon/early-validate)))
   (testing "cfn-lint works in :early-validate when all refs have been resolved"
@@ -170,6 +199,71 @@
 
 (deftest test-validation-linting
   (testing "ref templates are validated during :start"
+    (testing "in template components"
+      (is (thrown-with-msg?
+            ExceptionInfo
+            #"Template must not be empty"
+            (-> (template-system :lint? true :template (ds/local-ref [:empty]))
+              (assoc-in [::ds/defs :t :empty] {})
+              ds/start
+              cause)))
+      (testing "regions are considered during linting"
+        (is (thrown-with-msg?
+              ExceptionInfo
+              #"Template must not be empty"
+              (-> (template-system
+                    :lint? true
+                    :regions [:us-east-1]
+                    :template (ds/local-ref [:empty]))
+                (assoc-in [::ds/defs :t :empty] {})
+                ds/start
+                cause))
+          "one region")
+        (is (thrown-with-msg?
+              ExceptionInfo
+              #"Template must not be empty"
+              (-> (template-system
+                    :lint? true
+                    :regions [:us-east-1 :us-east-2 :us-west-2]
+                    :template (ds/local-ref [:empty]))
+                (assoc-in [::ds/defs :t :empty] {})
+                ds/start
+                cause))
+          "several regions")
+        (let [sm-template
+              #__ {:AWSTemplateFormatVersion "2010-09-09"
+                   :Resources
+                   {:Instance
+                    {:Type "AWS::SageMaker::NotebookInstance"
+                     :Properties
+                     {:InstanceType "ml.t2.medium"
+                      :RoleArn {"Fn::Sub" "arn:aws:iam::${AWS::AccountId}:role/SageMakerExecutionRole"}}}}}]
+          (is (-> (template-system
+                    :lint? true
+                    :regions [:us-east-1]
+                    :template sm-template)
+               ds/start))
+          (testing "Linting fails for a valid resource that is not supported in a region"
+            (is (thrown-with-msg?
+                  ExceptionInfo
+                  #"Resource type.*AWS::SageMaker::NotebookInstance.*does not exist in"
+                  (-> (template-system
+                        :lint? true
+                        :regions [:ca-west-1]
+                        :template sm-template)
+                    ds/start
+                    cause))
+              "with one region")
+            (is (thrown-with-msg?
+                  ExceptionInfo
+                  #"Resource type.*AWS::SageMaker::NotebookInstance.*does not exist in"
+                  (-> (template-system
+                        :lint? true
+                        :regions [:us-east-1 :ca-west-1 :us-east-2]
+                        :template sm-template)
+                    ds/start
+                    cause))
+              "with several regions, most of which are supported")))))
     (is (thrown-with-msg?
           ExceptionInfo
           #"Template must not be empty"
@@ -202,6 +296,23 @@
 
 (def template-b
   (assoc-in template-a [:Resources :OAI2] (oai "OAI2")))
+
+(deftest test-stack-from-template
+  (let [{:keys [regions]} (test/get-config)
+        stack-name (test/rand-stack-name)]
+    (doseq [region regions
+            :let [system-def (-> (stack-a
+                                   :name stack-name
+                                   :region region
+                                   :template (ds/local-ref [:template]))
+                               system-a
+                               (assoc-in [::ds/defs :services :template]
+                                 (cfn/template :template template-a)))]]
+      (test/with-system-delete [sys system-def]
+        (let [{:keys [stack-a]} (-> @sys ::ds/instances :services)]
+          (is (= "CREATE_COMPLETE"
+                (-> stack-a :resources :OAI1 :ResourceStatus))
+            "A stack can sucessfully be created from a template component"))))))
 
 (deftest test-lifecycle
   (let [{:keys [regions]} (test/get-config)
@@ -706,7 +817,7 @@
   (let [{:keys [regions]} (test/get-config)
         stack-name (test/rand-stack-name)]
     (doseq [region regions
-            :let [system-def
+            :let [system-def-no-template
                   #__ (assoc test/system-base
                         ::ds/defs
                         {:service
@@ -720,11 +831,42 @@
                           (cfn/stack
                             {:change-set (ds/local-ref [:change-set])
                              :name stack-name
-                             :region region})}})]]
-      (is (ds/signal system-def :salmon/early-validate)
-        "early-validate succeeds")
-      (test/with-system-delete [sys system-def]
-        (testing "A stack can be created from a change set"
+                             :region region})}})
+                  system-def-template
+                  #__ (assoc test/system-base
+                        ::ds/defs
+                        {:service
+                         {:change-set
+                          (cfn/change-set
+                            {:name (test/rand-stack-name)
+                             :region region
+                             :stack-name stack-name
+                             :template (ds/local-ref [:template])})
+                          :stack
+                          (cfn/stack
+                            {:change-set (ds/local-ref [:change-set])
+                             :name stack-name
+                             :region region})
+                          :template
+                          (cfn/template
+                            {:template template-a})}})]]
+      (test/with-system-delete [sys system-def-no-template]
+        (testing "A stack can be created from a change-set"
+          (is (ds/signal system-def-no-template :salmon/early-validate)
+            "early-validate succeeds")
+          (let [{:keys [change-set stack]} (-> @sys ::ds/instances :service)]
+            (is (->> (select-keys change-set [:id :name :stack-id :stack-name])
+                  vals
+                  (every? string?))
+              "change-set returns expected names and IDs")
+            (is (= (:stack-id change-set)
+                  (:stack-id stack)))
+            (is (= "CREATE_COMPLETE"
+                  (-> stack :resources :OAI1 :ResourceStatus))))))
+      (test/with-system-delete [sys system-def-template]
+        (testing "A change-set can be created from a template and applied to a stack"
+          (is (ds/signal system-def-template :salmon/early-validate)
+            "early-validate succeeds")
           (let [{:keys [change-set stack]} (-> @sys ::ds/instances :service)]
             (is (->> (select-keys change-set [:id :name :stack-id :stack-name])
                   vals
