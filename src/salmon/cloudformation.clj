@@ -38,21 +38,28 @@
   (or (str/includes? s "_IN_PROGRESS state")
     (boolean (re-find re-in-progress-error-message s))))
 
-(defn- cfn-lint! [template]
+(defn- cfn-lint! [{:keys [region]} template]
   (fs/with-temp-dir [dir {:prefix "salmon-cloudformation"}]
     (let [f (fs/create-file (fs/path dir "cloudformation.template"))]
       (spit (fs/file f) template)
-      (let [{:keys [err exit out]} (sh/sh "cfn-lint" (str f))]
+      (let [{:keys [err exit out]}
+            #__ (apply sh/sh
+                  "cfn-lint"
+                  (str f)
+                  (when (some-> region ds/ref? not)
+                    ["-r" (name region)]))]
         (cond
           (zero? exit) nil
           (empty? err) out
           (empty? out) err
           :else (str err out))))))
 
-(defn- template-data [& {:keys [template validate?]
-                         :or {validate? true}}]
+(defn- template-data
+  [config
+   & {:keys [template validate?]
+      :or {validate? true}}]
   (let [template-json (json/write-str template)]
-    (if-let [errors (and validate? (cfn-lint! template-json))]
+    (if-let [errors (and validate? (cfn-lint! config template-json))]
       (if (str/blank? errors)
         {:json template-json}
         (throw (ex-info errors {:json template-json})))
@@ -116,7 +123,7 @@
                                               {:template resolved-template}))
       (empty? resolved-template) (throw (ex-info "Template must not be empty."
                                           {:template resolved-template}))
-      lint? (let [{:keys [message]} (template-data :template resolved-template)]
+      lint? (let [{:keys [message]} (template-data config :template resolved-template)]
               (when (seq message)
                 (throw (ex-info (str "Template validation failed: " message)
                          {:message message
@@ -348,7 +355,7 @@
                       (if (u/anomaly? r)
                         [stack-id false]
                         [stack-id true])))
-                  #(cou-stack! client signal (:json (template-data :template template :validate? false))))]
+                  #(cou-stack! client signal (:json (template-data config :template template :validate? false))))]
         (validate! signal)
         (loop [[r updated?] (ex!)]
           (cond
@@ -579,7 +586,7 @@
             client (or (:client config)
                      (aws/client {:api :cloudformation :region region}))
             {:as r :keys [Id StackId]}
-            #__ (create-change-set! client signal (:json (template-data :template template :validate? false)))]
+            #__ (create-change-set! client signal (:json (template-data config :template template :validate? false)))]
         (if (u/anomaly? r)
           (throw (response-error "Error creating change set" r))
           (let [{:keys [Changes]}

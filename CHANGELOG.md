@@ -7,6 +7,8 @@
   - After updating, wait for the update to complete and throw an error if
     the update fails. Previously, this was not waited on and the update
     was not checked for failure.
+- (breaking) When a region is specified, pass it to cfn-lint. This may
+  cause some templates to fail linting that previously passed.
 
 ## v0.23.2 (2025-02-20)
 
