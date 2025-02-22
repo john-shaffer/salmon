@@ -9,6 +9,9 @@
     was not checked for failure.
 - (breaking) When a region is specified, pass it to cfn-lint. This may
   cause some templates to fail linting that previously passed.
+  This is unlikely to adversely affect anyone because the change-sets or
+  stacks using those templates would very likely have been failing to
+  deploy.
 - Add `salmon.cloudformation/template` component. This is useful for
   validating a template that is used by more than one stack or change-set.
 
