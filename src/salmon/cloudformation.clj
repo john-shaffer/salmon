@@ -262,7 +262,7 @@
 (defn- execute-change-set! [client stack-name {:keys [changes id]}]
   (when (seq changes)
     ; This op only returns {}
-    (u/invoke! client
+    (aws/invoke client
       {:op :ExecuteChangeSet
        :request
        {:ChangeSetName id
@@ -339,24 +339,23 @@
         client (or inst-client
                  (:client config)
                  (aws/client {:api :cloudformation :region region}))]
-    (cond
-      inst-client
+    (if inst-client
       instance
-
-      change-set
-      (let [{:keys [stack-id]} change-set]
-        (execute-change-set! client name change-set)
-        (wait-until-complete! stack-id client)
-        (stack-instance client name stack-id))
-
-      :else
-      (do (validate! signal)
-        (loop [[r updated?] (cou-stack! client signal (:json (template-data :template template :validate? false)))]
+      (let [{:keys [stack-id]} change-set
+            ex! (if change-set
+                  (fn []
+                    (let [r (execute-change-set! client name change-set)]
+                      (if (u/anomaly? r)
+                        [stack-id false]
+                        [stack-id true])))
+                  #(cou-stack! client signal (:json (template-data :template template :validate? false))))]
+        (validate! signal)
+        (loop [[r updated?] (ex!)]
           (cond
             (some-> r u/aws-error-message in-progress-error-message?)
             (do
               (wait-until-complete! name client)
-              (recur (cou-stack! client signal (:json (template-data :template template :validate? false)))))
+              (recur (ex!)))
 
             (u/anomaly? r)
             (throw (response-error "Error creating stack" r))

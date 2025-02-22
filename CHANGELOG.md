@@ -1,5 +1,13 @@
 ## Unreleased
 
+- (breaking) Change the behavior when updating a stack from a change-set
+  to match the behavior when creating a stack from a template.
+  - If the stack is in an IN_PROGRESS state when attempting to update,
+    wait for it to complete before updating. This produced an error before.
+  - After updating, wait for the update to complete and throw an error if
+    the update fails. Previously, this was not waited on and the update
+    was not checked for failure.
+
 ## v0.23.2 (2025-02-20)
 
 - Fix that `salmon.signal/early-validate/conf` would not
