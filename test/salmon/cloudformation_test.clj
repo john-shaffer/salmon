@@ -514,23 +514,24 @@
                   :Parameters {:Username {:Description "Username"
                                           :Type "String"}}
                   :Resources
-                  {:User1 (iam-user {:Ref "Username"})}}]
+                  {:User1 (iam-user {:Ref "Username"})}}
+        username (test/rand-iam-username)
+        system-def (system-a
+                     (stack-a
+                       :capabilities #{"CAPABILITY_NAMED_IAM"}
+                       :parameters {:Username username}
+                       :template template))]
     (is (thrown-with-msg?
           ExceptionInfo
           #"Error creating stack.*Parameters"
           (cause (ds/start (system-a (stack-a :template template))))))
-    (let [username (test/rand-iam-username)
-          sys (ds/start (system-a (stack-a
-                                    :capabilities #{"CAPABILITY_NAMED_IAM"}
-                                    :parameters {:Username username}
-                                    :template template)))]
+    (test/with-system-delete [sys system-def]
       (is (= [:User1]
-            (->> sys ::ds/instances :services :stack-a :resources keys)))
+            (->> @sys ::ds/instances :services :stack-a :resources keys)))
       (is (= {:Username {:ParameterValue username}}
-            (->> sys ::ds/instances :services :stack-a :parameters-raw)))
+            (->> @sys ::ds/instances :services :stack-a :parameters-raw)))
       (is (= {:Username username}
-            (->> sys ::ds/instances :services :stack-a :parameters)))
-      (ds/signal sys :salmon/delete))))
+            (->> @sys ::ds/instances :services :stack-a :parameters))))))
 
 (deftest test-tags
   (let [sys (ds/start (system-a (stack-a
