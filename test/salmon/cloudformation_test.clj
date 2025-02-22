@@ -55,7 +55,7 @@
      :Properties
      {:BucketName (or name (test/rand-bucket-name))}}}})
 
-(defn template-system [& {:keys [name template]}]
+(defn stack-system [& {:keys [name template]}]
   (assoc
     test/system-base
     ::ds/defs
@@ -677,12 +677,12 @@
                                       :ResourceStatus :ResourceType :StackName]))))))
 
 (deftest test-stack-rollback-state
-  (let [system (atom (template-system :template (bucket-template :name " ")))]
+  (let [system (atom (stack-system :template (bucket-template :name " ")))]
     (testing "Force a rollback state"
       (is (thrown-with-msg? ExceptionInfo #"ROLLBACK_(COMPLETE|IN_PROGRESS)"
             (cause (swap! system ds/start)))))
     (testing "Creating a stack with the same name as a stack in a rollback state succeeds"
-      (reset! system (template-system :template (bucket-template)))
+      (reset! system (stack-system :template (bucket-template)))
       (swap! system ds/start)
       (is (= "CREATE_COMPLETE"
             (->> @system ::ds/instances :services :stack :resources
@@ -690,11 +690,11 @@
 
 (deftest test-no-changes-update-rollback-complete
   (let [stack-name (test/rand-stack-name)
-        system-def (template-system :name stack-name :template (bucket-template))
+        system-def (stack-system :name stack-name :template (bucket-template))
         system (atom system-def)]
     (swap! system ds/start)
     (testing "Force the stack to rollback"
-      (reset! system (template-system :name stack-name :template (bucket-template :name " ")))
+      (reset! system (stack-system :name stack-name :template (bucket-template :name " ")))
       (is (thrown-with-msg? ExceptionInfo #"UPDATE_ROLLBACK_(COMPLETE|IN_PROGRESS)"
             (cause (swap! system ds/start)))))
     (testing "The stack can be started with no changes when in UPDATE_ROLLBACK_COMPLETE status"
