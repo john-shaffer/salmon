@@ -11,20 +11,20 @@
 
 (defn test [opts]
   (-> opts
-      (assoc :main-args ["-m" "kaocha.runner"])
-      (bb/run-task [:test]))
+    (assoc :main-args ["-m" "kaocha.runner"])
+    (bb/run-task [:test]))
   opts)
 
 (defn ci "Run the CI pipeline of tests (and build the JAR)." [opts]
   (-> opts
-      (assoc :lib lib :version (get-version opts))
-      bb/clean
-      test
-      bb/clean
-      (assoc :src-pom "template/pom.xml")
-      bb/jar))
+    (assoc :lib lib :version (get-version opts))
+    bb/clean
+    test
+    bb/clean
+    (assoc :src-pom "template/pom.xml")
+    bb/jar))
 
 (defn deploy "Deploy the JAR to Clojars." [opts]
   (-> opts
-      (assoc :lib lib :version (get-version opts))
-      bb/deploy))
+    (assoc :lib lib :version (get-version opts))
+    bb/deploy))
