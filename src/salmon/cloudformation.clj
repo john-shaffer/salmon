@@ -58,19 +58,26 @@
           :else (str err out))))))
 
 (defn- template-data
-  [config
+  [{:as config :keys [template-url]}
    & {:keys [template validate?]
       :or {validate? true}}]
   ; unwrap {:template {}} from the template component
   ; while allowing direct template data specification when not using
   ; a template component
   (let [template (:template template template)
-        template-json (json/write-str template)]
-    (if-let [errors (and validate? (cfn-lint! config template-json))]
-      (if (str/blank? errors)
-        {:json template-json}
-        (throw (ex-info errors {:json template-json})))
-      {:json template-json})))
+        template-data
+        #__ (cond
+              template {:json (json/write-str template)}
+              template-url {:url template-url}
+              validate? (throw (ex-info "Missing template data" {})))
+        {:keys [json url]} template-data
+        errors (and validate?
+                 (cfn-lint! config
+                   (or json
+                     (slurp url))))]
+    (if (and errors (not (str/blank? errors)))
+      (throw (ex-info errors template-data))
+      template-data)))
 
 (def ^{:private true}
   change-set-schema
@@ -129,24 +136,34 @@
                  (:salmon/early-schema component-def)
                  (:schema component-def))
         errors (and schema (m/explain schema config))
-        {:keys [change-set lint? template]} config
+        {:keys [change-set lint? template template-url]} config
         resolved-template (val/resolve-refs system component-id template)]
     (cond
-      errors (throw
-               (ex-info (str "Validation failed: " (merr/humanize errors))
-                 {:errors errors}))
+      errors
+      (throw
+        (ex-info (str "Validation failed: " (merr/humanize errors))
+          {:errors errors}))
+
       ; If we have a change-set, then we don't use a template directly
       change-set nil
-      (and pre? (not (val/refs-resolveable? system component-id template))) nil
-      (not (map? resolved-template)) (throw (ex-info "Template must be a map."
-                                              {:template resolved-template}))
-      (empty? resolved-template) (throw (ex-info "Template must not be empty."
-                                          {:template resolved-template}))
-      lint? (let [{:keys [message]} (template-data config :template resolved-template)]
-              (when (seq message)
-                (throw (ex-info (str "Template validation failed: " message)
-                         {:message message
-                          :template resolved-template})))))))
+
+      (and pre? (not (val/refs-resolveable? system component-id template)))
+      nil
+
+      (and (not template-url) (not (map? resolved-template)))
+      (throw (ex-info "Template must be a map."
+               {:template resolved-template}))
+
+      (and (not template-url) (empty? resolved-template))
+      (throw (ex-info "Template must not be empty."
+               {:template resolved-template}))
+
+      lint?
+      (let [{:keys [message]} (template-data config :template resolved-template)]
+        (when (seq message)
+          (throw (ex-info (str "Template validation failed: " message)
+                   {:message message
+                    :template resolved-template})))))))
 
 (defn- start-template!
   [{::ds/keys [config instance]
@@ -289,14 +306,14 @@
 
 (defn- cou-stack!
   "Create a new stack or update an existing one with the same name."
-  [client {::ds/keys [config]} template-json]
+  [client {::ds/keys [config]} {:keys [json url]}]
   (let [{:keys [capabilities name parameters tags termination-protection?]} config
         request {:Capabilities (seq capabilities)
                  :EnableTerminationProtection (boolean termination-protection?)
                  :Parameters (aws-parameters parameters)
                  :StackName name
                  :Tags (u/tags tags)
-                 :TemplateBody template-json}
+                 (if json :TemplateBody :TemplateURL) (or json url)}
         r (aws/invoke client {:op :DescribeStacks
                               :request {:StackName name}})
         [{:keys [EnableTerminationProtection StackId StackStatus]}]
@@ -409,7 +426,7 @@
                       (if (u/anomaly? r)
                         [stack-id false]
                         [stack-id true])))
-                  #(cou-stack! client signal (:json (template-data config :template template :validate? false))))]
+                  #(cou-stack! client signal (template-data config :template template :validate? false)))]
         (validate! signal)
         (loop [[r updated?] (ex!)]
           (cond
@@ -486,6 +503,13 @@
    :template
    A map representing a CloudFormation template. The map
    may contain donut.system refs.
+
+   :template-url
+   The URL of a file containing the template body. The URL
+   must point to a template (max size: 1 MB) that's located
+   in an Amazon S3 bucket. The location for an Amazon S3
+   bucket must start with https://.
+   Ignored when :change-set or :template is present.
 
    :termination-protection?
    Enables or disables termination protection on the stack.
@@ -612,14 +636,14 @@
           (Thread/sleep 5000)
           (recur))))))
 
-(defn- create-change-set! [client {::ds/keys [config]} template-json]
+(defn- create-change-set! [client {::ds/keys [config]} {:keys [json url]}]
   (let [{:keys [capabilities name parameters stack-name tags]} config
         request {:Capabilities (seq capabilities)
                  :ChangeSetName name
                  :Parameters (aws-parameters parameters)
                  :StackName stack-name
                  :Tags (u/tags tags)
-                 :TemplateBody template-json}
+                 (if json :TemplateBody :TemplateURL) (or json url)}
         _ (logr/info "Creating change-set" name)
         r (aws/invoke client {:op :CreateChangeSet :request request})]
     (if (and (u/anomaly? r)
@@ -640,7 +664,7 @@
             client (or (:client config)
                      (aws/client {:api :cloudformation :region region}))
             {:as r :keys [Id StackId]}
-            #__ (create-change-set! client signal (:json (template-data config :template template :validate? false)))]
+            #__ (create-change-set! client signal (template-data config :template template :validate? false))]
         (if (u/anomaly? r)
           (throw (response-error "Error creating change set" r))
           (let [{:keys [Changes]}
@@ -721,7 +745,14 @@
 
    :template
    A map representing a CloudFormation template. The map
-   may contain donut.system refs."
+   may contain donut.system refs.
+
+   :template-url
+   The URL of a file containing the template body. The URL
+   must point to a template (max size: 1 MB) that's located
+   in an Amazon S3 bucket. The location for an Amazon S3
+   bucket must start with https://.
+   Ignored when :template is present."
   [& {:as config}]
   {::ds/config config
    ::ds/start start-change-set!

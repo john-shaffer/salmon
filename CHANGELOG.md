@@ -1,5 +1,7 @@
 ## Unreleased
 
+- Add :template-url option to change-set and stack components.
+
 ## v0.24.0 (2025-02-22)
 
 - (breaking) Change the behavior when updating a stack from a change-set
