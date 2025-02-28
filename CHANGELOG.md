@@ -1,5 +1,7 @@
 ## Unreleased
 
+## v0.25.1 (2025-02-28)
+
 - Don't call ExecuteChangeSet on stack start when there are no
   changes in the change set. Fix a spurious error when using a
   change set with no changes on a stack in an
