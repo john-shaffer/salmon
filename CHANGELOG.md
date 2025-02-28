@@ -1,5 +1,10 @@
 ## Unreleased
 
+- Don't call ExecuteChangeSet on stack start when there are no
+  changes in the change set. Fix a spurious error when using a
+  change set with no changes on a stack in an
+  `UPDATE_ROLLBACK_COMPLETE` state.
+
 ## v0.25.0 (2025-02-26)
 
 - Add :template-url option to change-set and stack components.

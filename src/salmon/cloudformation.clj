@@ -419,13 +419,15 @@
                  (aws/client {:api :cloudformation :region region}))]
     (if inst-client
       instance
-      (let [{:keys [stack-id]} change-set
+      (let [{:keys [changes stack-id]} change-set
             ex! (if change-set
                   (fn []
-                    (let [r (execute-change-set! client name change-set)]
-                      (if (u/anomaly? r)
-                        [stack-id false]
-                        [stack-id true])))
+                    (if (seq changes)
+                      (let [r (execute-change-set! client name change-set)]
+                        (if (u/anomaly? r)
+                          [stack-id false]
+                          [stack-id true]))
+                      [stack-id false]))
                   #(cou-stack! client signal (template-data config :template template :validate? false)))]
         (validate! signal)
         (loop [[r updated?] (ex!)]
