@@ -1,5 +1,11 @@
 ## Unreleased
 
+- (breaking) Throw exceptions for errors in fetch-hosted-zone-id
+  instead of returning the anomaly response from aws-api. This
+  is more appropriate for how the function is typically used.
+  Its result is often fed directly into data structures,
+  so callers would have to provide their logic to throw exceptions
+  if we did not.
 - Add `:resource-ids` map to stack and stack-properties instances.
 
 ## v0.25.1 (2025-02-28)

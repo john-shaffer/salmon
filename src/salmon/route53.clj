@@ -1,7 +1,6 @@
 (ns salmon.route53
   (:require
    [clojure.string :as str]
-   [cognitect.aws.client.api :as aws]
    [salmon.util :as u]))
 
 (defn- extract-hosted-zone-id
@@ -26,16 +25,14 @@
   (let [fqdn (if (str/ends-with? dns-name ".")
                dns-name
                (str dns-name "."))
-        {:as response :keys [HostedZones]}
+        {:keys [HostedZones]}
         (->> {:op :ListHostedZonesByName
               :request {:DNSName dns-name}}
-             (aws/invoke client))
+             (u/invoke! client))
         hosted-zones (->> HostedZones
                           (filter (comp #{fqdn} :Name)))]
-    (cond
-      (u/anomaly? response) response
-      (seq hosted-zones) (-> hosted-zones first :Id extract-hosted-zone-id)
-      :else
+    (if (seq hosted-zones)
+      (-> hosted-zones first :Id extract-hosted-zone-id)
       (let [[_ & dns-parts] (str/split dns-name #"\.")]
         (when (seq dns-parts)
           (fetch-hosted-zone-id client (str/join "." dns-parts)))))))
