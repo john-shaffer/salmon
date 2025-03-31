@@ -1,5 +1,7 @@
 ## Unreleased
 
+## v0.26.0 (2025-03-31)
+
 - (breaking) Throw exceptions for errors in fetch-hosted-zone-id
   instead of returning the anomaly response from aws-api. This
   is more appropriate for how the function is typically used.
