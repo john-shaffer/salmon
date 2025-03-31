@@ -1,5 +1,7 @@
 ## Unreleased
 
+- Add `:resource-ids` map to stack and stack-properties instances.
+
 ## v0.25.1 (2025-02-28)
 
 - Don't call ExecuteChangeSet on stack start when there are no

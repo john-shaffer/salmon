@@ -394,6 +394,7 @@
                                {:stack-id stack-id
                                 :stack-name stack-name}
                                e))))
+        resources-map (resources-map resources)
         describe-r (describe-stack client stack-id)
         outputs-raw (-> describe-r :Outputs outputs-map-raw)
         parameters-raw (-> describe-r :Parameters parameters-map-raw)
@@ -405,7 +406,8 @@
      :outputs-raw outputs-raw
      :parameters (me/map-vals :ParameterValue parameters-raw)
      :parameters-raw parameters-raw
-     :resources (resources-map resources)
+     :resources resources-map
+     :resource-ids (me/map-vals :PhysicalResourceId resources-map)
      :stack-id stack-id
      :tags-raw tags-raw
      :tags (me/map-vals :Value tags-raw)}))

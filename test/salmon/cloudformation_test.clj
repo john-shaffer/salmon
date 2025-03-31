@@ -576,6 +576,8 @@
   (let [sys (ds/start (system-a (stack-a :template template-b)))]
     (is (= #{:OAI1 :OAI2}
           (->> sys ::ds/instances :services :stack-a :resources
+            keys set)
+          (->> sys ::ds/instances :services :stack-a :resource-ids
             keys set))
       "Resources are retrieved and attached to the stack instance")
     (is (= #{:DriftInformation :LastUpdatedTimestamp :PhysicalResourceId
@@ -583,6 +585,9 @@
           (->> sys ::ds/instances :services :stack-a :resources
             vals (mapcat keys) set))
       "Resource maps have the expected keys")
+    (let [oai1-id (-> sys ::ds/instances :services :stack-a :resource-ids :OAI1)]
+      (is (and (string? oai1-id) (seq oai1-id))
+        "Resource IDS are present in :resource-ids on the stack instance"))
     (ds/signal sys :salmon/delete)))
 
 (deftest test-aws-error-messages
