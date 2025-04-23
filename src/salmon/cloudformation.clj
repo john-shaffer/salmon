@@ -648,7 +648,7 @@
                  :StackName stack-name
                  :Tags (u/tags tags)
                  (if json :TemplateBody :TemplateURL) (or json url)}
-        _ (logr/info "Creating change-set" name)
+        _ (logr/info "Creating change-set" name "for stack" stack-name)
         r (aws/invoke client {:op :CreateChangeSet :request request})]
     (if (and (u/anomaly? r)
           (= "ValidationError" (u/aws-error-code r))

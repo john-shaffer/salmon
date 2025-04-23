@@ -1,5 +1,7 @@
 ## Unreleased
 
+- Add stack name to "creating change-set" log message.
+
 ## v0.26.0 (2025-03-31)
 
 - (breaking) Throw exceptions for errors in fetch-hosted-zone-id
