@@ -200,10 +200,10 @@
    (fn [signal]
      (validate! signal :pre? true))})
 
-(defn- response-error [message response]
+(defn- response-error [message response & [extra-ex-data]]
   (ex-info (str message
              (some->> response u/aws-error-message (str ": ")))
-    {:response response}))
+    (assoc extra-ex-data :response response)))
 
 (defn- aws-parameters [parameters]
   (mapv
@@ -649,14 +649,22 @@
                  :Tags (u/tags tags)
                  (if json :TemplateBody :TemplateURL) (or json url)}
         _ (logr/info "Creating change-set" name "for stack" stack-name)
-        r (aws/invoke client {:op :CreateChangeSet :request request})]
-    (if (and (u/anomaly? r)
-          (= "ValidationError" (u/aws-error-code r))
-          (str/includes? (u/aws-error-message r) "does not exist"))
+        op-map {:op :CreateChangeSet :request request}
+        r (aws/invoke client op-map)]
+    (cond
+      (not (u/anomaly? r))
+      r
+
+      (and
+        (= "ValidationError" (u/aws-error-code r))
+        (str/includes? (u/aws-error-message r) "does not exist"))
       (aws/invoke client
         {:op :CreateChangeSet
          :request (assoc request :ChangeSetType "CREATE")})
-      r)))
+
+      :else
+      (throw (response-error "Error creating change set" r
+               op-map)))))
 
 (defn- start-change-set! [{::ds/keys [config instance]
                            :as signal}]
@@ -667,19 +675,17 @@
       (let [_ (validate! signal)
             client (or (:client config)
                      (aws/client {:api :cloudformation :region region}))
-            {:as r :keys [Id StackId]}
+            {:keys [Id StackId]}
             #__ (create-change-set! client signal (template-data config :template template :validate? false))]
-        (if (u/anomaly? r)
-          (throw (response-error "Error creating change set" r))
-          (let [{:keys [Changes]}
-                #__ (wait-until-complete-change-set! Id StackId client
-                      :fail-on-no-changes? fail-on-no-changes?)]
-            {:changes Changes
-             :client client
-             :id Id
-             :name name
-             :stack-id StackId
-             :stack-name stack-name}))))))
+        (let [{:keys [Changes]}
+              #__ (wait-until-complete-change-set! Id StackId client
+                    :fail-on-no-changes? fail-on-no-changes?)]
+          {:changes Changes
+           :client client
+           :id Id
+           :name name
+           :stack-id StackId
+           :stack-name stack-name})))))
 
 (defn- delete-change-set!
   [{:keys [::ds/instance]
