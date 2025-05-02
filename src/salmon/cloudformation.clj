@@ -589,6 +589,9 @@
    stack's properties. Properties include the stack's resources,
    outputs, and parameters.
 
+   If the stack is currently being created, stack-properties will
+   wait for creation to complete or fail before returning.
+
    Supported signals: ::ds/start, ::ds/stop
 
    config options:
