@@ -422,6 +422,7 @@
         parameters-raw (-> describe-r :Parameters parameters-map-raw)
         tags-raw (-> describe-r :Tags tags-map-raw)]
     {:client cloudformation-client
+     :cloudformation-client cloudformation-client
      :describe-stack-raw describe-r
      :name stack-name
      :outputs (me/map-vals :OutputValue outputs-raw)
@@ -440,11 +441,9 @@
   (let [signal (update signal ::ds/config normalize-config)
         {::ds/keys [config instance]} signal
         {:keys [change-set name region template]} config
-        {inst-client :client} instance
-        cloudformation-client (or inst-client
-                                (:cloudformation-client config)
+        cloudformation-client (or (:cloudformation-client config)
                                 (aws/client {:api :cloudformation :region region}))]
-    (if inst-client
+    (if (:cloudformation-client instance)
       instance
       (let [{:keys [changes stack-id]} change-set
             ex! (if change-set
@@ -481,12 +480,12 @@
 (defn- delete!
   [{:keys [::ds/instance]
     {:keys [name]} ::ds/config
-    {:keys [client]} ::ds/instance
+    {:keys [cloudformation-client]} ::ds/instance
     :as signal}]
-  (if-not client
+  (if-not cloudformation-client
     instance
     (do
-      (delete-stack! client name)
+      (delete-stack! cloudformation-client name)
       (stop! signal))))
 
 (defn stack
@@ -595,25 +594,25 @@
         {:keys [region throw-on-missing?]
          :or {throw-on-missing? true}}
         #__ config
-        {:keys [client]} instance
+        {:keys [cloudformation-client]} instance
         schema (-> system ::ds/component-def :schema)
-        errors (when-not client
+        errors (when-not cloudformation-client
                  (and schema (m/explain schema config)))]
     (cond
-      client instance
+      cloudformation-client instance
       errors (throw
                (ex-info (str "Validation failed: " (merr/humanize errors))
                  {:errors errors}))
       :else
-      (let [client (or (:cloudformation-client config)
-                     (aws/client {:api :cloudformation :region region}))
-            r (get-stack-properties! client signal)]
+      (let [cloudformation-client (or (:cloudformation-client config)
+                                    (aws/client {:api :cloudformation :region region}))
+            r (get-stack-properties! cloudformation-client signal)]
         (if (u/anomaly? r)
           (if (or throw-on-missing? (not (str/includes? (u/aws-error-message r) "does not exist")))
             (throw (response-error "Error creating stack properties" r))
-            {:client client})
-          (when (wait-until-creation-complete! signal client)
-            (stack-instance client (:name config) r)))))))
+            {:cloudformation-client cloudformation-client})
+          (when (wait-until-creation-complete! signal cloudformation-client)
+            (stack-instance cloudformation-client (:name config) r)))))))
 
 (defn stack-properties
   "Returns a component that describes an existing CloudFormation
@@ -728,6 +727,7 @@
                     :fail-on-no-changes? fail-on-no-changes?)]
           {:changes Changes
            :client client
+           :cloudformation-client cloudformation-client
            :id Id
            :name name
            :stack-id StackId
@@ -736,15 +736,15 @@
 (defn- delete-change-set!
   [{:keys [::ds/instance]
     {:keys [name stack-name]} ::ds/config
-    {:keys [client]} ::ds/instance
+    {:keys [cloudformation-client]} ::ds/instance
     :as signal}]
-  (if-not client
+  (if-not cloudformation-client
     instance
     (let [op-map {:op :DeleteChangeSet
                   :request
                   {:ChangeSetName name
                    :StackName stack-name}}
-          r (aws/invoke client op-map)
+          r (aws/invoke cloudformation-client op-map)
           dne? (and (u/anomaly? r)
                  (= "ValidationError" (u/aws-error-code r))
                  (str/includes? (u/aws-error-message r) "does not exist"))]
@@ -753,7 +753,7 @@
         ; work is done.
         dne? nil
         (u/anomaly? r) (throw (u/->ex-info r :op-map op-map))
-        :else (wait-until-complete-change-set! name stack-name client))
+        :else (wait-until-complete-change-set! name stack-name cloudformation-client))
       (stop! signal))))
 
 (defn change-set

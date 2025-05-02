@@ -328,21 +328,21 @@
       (test/with-system-delete [system system-def]
         (testing ":start works"
           ; with-system-delete automatically sends start
-          (is (-> @system ::ds/instances :services :stack-a :client))
+          (is (-> @system ::ds/instances :services :stack-a :cloudformation-client))
           (testing ":start is idempotent"
             (let [start (System/nanoTime)]
               (is (= (::ds/instances @system) (::ds/instances (ds/start @system))))
               (is (> 60 (quot (- (System/nanoTime) start) 1000000)))))
           (testing ":stop works"
             (reset! system (ds/stop @system))
-            (is (= nil (-> @system ::ds/instances :services :stack-a :client)))
+            (is (= nil (-> @system ::ds/instances :services :stack-a :cloudformation-client)))
             (testing ":stop is idempotent"
               (let [start (System/nanoTime)]
                 (is (= (::ds/instances @system) (::ds/instances (ds/stop @system))))
                 (is (> 60 (quot (- (System/nanoTime) start) 1000000)))))
             (testing "system can be restarted after :stop"
               (reset! system (ds/start @system))
-              (is (-> @system ::ds/instances :services :stack-a :client))))
+              (is (-> @system ::ds/instances :services :stack-a :cloudformation-client))))
           (testing ":delete works"
             (let [stack-id (-> @system ::ds/instances :services :stack-a :stack-id)]
               (reset! system (ds/signal @system :salmon/delete))
@@ -354,7 +354,7 @@
                 (is (> 60 (quot (- (System/nanoTime) start) 1000000)))))
             (testing "system can be restarted after :delete"
               (reset! system (ds/start @system))
-              (is (-> @system ::ds/instances :services :stack-a :client)))))))))
+              (is (-> @system ::ds/instances :services :stack-a :cloudformation-client)))))))))
 
 (deftest test-rollback-status
   (let [{:keys [regions]} (test/get-config)]

@@ -8,6 +8,10 @@
   With this change, you can construct a single opts map with keys like
   `:cloudformation-client` and `:s3-client` that can be passed
   directly to various components.
+- (deprecation) Deprecate `:client` instance key for
+  `change-set`, `stack`, and `stack-properties` components.
+  The new key is `:cloudformation-client`. `:client` is still
+  present, but may be removed in the future.
 - Add stack name to "creating change-set" log message.
 - Add op-map to ex-data when CreateChangeSet fails.
 - Add `:throw-on-missing?` option to `stack-properties` component.
