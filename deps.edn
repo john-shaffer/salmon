@@ -1,15 +1,15 @@
 {:paths ["src"]
  :deps {org.clojure/clojure {:mvn/version "1.12.0"}
-        babashka/fs {:mvn/version "0.5.24"}
-        com.cognitect.aws/api {:mvn/version "0.8.735"}
-        com.cognitect.aws/cloudformation {:mvn/version "871.2.30.22"}
-        com.cognitect.aws/ec2 {:mvn/version "871.2.30.22"}
-        com.cognitect.aws/endpoints {:mvn/version "871.2.30.22"}
-        com.cognitect.aws/route53 {:mvn/version "871.2.29.52"}
-        com.cognitect.aws/s3 {:mvn/version "871.2.30.22"}
-        com.cognitect.aws/ssm {:mvn/version "871.2.30.11"}
+        babashka/fs {:mvn/version "0.5.25"}
+        com.cognitect.aws/api {:mvn/version "0.8.741"}
+        com.cognitect.aws/cloudformation {:mvn/version "871.2.31.23"}
+        com.cognitect.aws/ec2 {:mvn/version "871.2.31.23"}
+        com.cognitect.aws/endpoints {:mvn/version "871.2.31.23"}
+        com.cognitect.aws/route53 {:mvn/version "871.2.31.23"}
+        com.cognitect.aws/s3 {:mvn/version "871.2.31.23"}
+        com.cognitect.aws/ssm {:mvn/version "871.2.31.23"}
         com.rpl/specter {:mvn/version "1.1.4"}
-        io.github.clojure/tools.build {:mvn/version "0.10.7"}
+        io.github.clojure/tools.build {:mvn/version "0.10.8"}
         medley/medley {:mvn/version "1.4.0"}
         org.clojure/data.csv {:mvn/version "1.1.0"}
         org.clojure/data.json {:mvn/version "2.5.1"}
@@ -19,7 +19,7 @@
  :aliases
  {:antq
   {:deps
-   {com.github.liquidz/antq {:mvn/version "2.11.1269"}
+   {com.github.liquidz/antq {:mvn/version "2.11.1276"}
     org.slf4j/slf4j-nop {:mvn/version "2.0.17"}}
    :main-opts ["-m" "antq.core"]}
   :build
@@ -29,13 +29,13 @@
   :clj-watson
   {:replace-deps
    {io.github.clj-holmes/clj-watson
-    {:git/tag "v6.0.0" :git/sha "cb02879"}}
+    {:git/tag "v6.0.1" :git/sha "b520351"}}
    :main-opts ["-m" "clj-watson.cli" "scan" "-s" "-p" "deps.edn"]}
   :test
   {:extra-deps
-   {ch.qos.logback/logback-classic {:mvn/version "1.5.17"}
+   {ch.qos.logback/logback-classic {:mvn/version "1.5.18"}
     ; Used by malli.generator/-re-gen
-    com.gfredericks/test.chuck {:mvn/version "0.2.14"}
+    com.gfredericks/test.chuck {:mvn/version "0.2.15"}
     hashp/hashp {:mvn/version "0.2.2"}
     lambdaisland/kaocha {:git/url "https://github.com/insilica/kaocha.git"
                          :sha "811d37448e10b52e78dd2ef6ba95535e59f6bbda"}
