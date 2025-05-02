@@ -38,6 +38,16 @@
   (or (str/includes? s "_IN_PROGRESS state")
     (boolean (re-find re-in-progress-error-message s))))
 
+(defn normalize-config
+  "Returns a normalized config with deprecated options warned about
+   and replaced with current options."
+  [config]
+  (let [{:keys [cloudformation-client client]} config]
+    (when (and client (not= client cloudformation-client))
+      (logr/warn "The :client option is deprecated. Use :cloudformation-client instead."))
+    (-> (assoc config :cloudformation-client (or cloudformation-client client))
+      (dissoc :client))))
+
 (defn- cfn-lint! [{:keys [region regions]} template]
   (fs/with-temp-dir [dir {:prefix "salmon-cloudformation"}]
     (let [f (fs/create-file (fs/path dir "cloudformation.template"))]
@@ -212,10 +222,10 @@
        :ParameterValue v})
     parameters))
 
-(defn- find-failure-cause [stack-name client]
+(defn- find-failure-cause [stack-name cloudformation-client]
   (let [events (->> {:op :DescribeStackEvents
                      :request {:StackName stack-name}}
-                 (u/pages-seq client)
+                 (u/pages-seq cloudformation-client)
                  (mapcat :StackEvents))]
     (loop [[event & more] events
            last-failure nil]
@@ -225,8 +235,8 @@
         (#{"CREATE_FAILED" "UPDATE_FAILED"} (:ResourceStatus event)) (recur more event)
         :else (recur more last-failure)))))
 
-(defn- rollback-error [stack-name client status]
-  (let [event (find-failure-cause stack-name client)]
+(defn- rollback-error [stack-name cloudformation-client status]
+  (let [event (find-failure-cause stack-name cloudformation-client)]
     (ex-info (str "Stack " stack-name " is in rollback state: " status ". "
                (:LogicalResourceId event) " failed with reason: "
                (:ResourceStatusReason event))
@@ -236,14 +246,15 @@
 
 (defn- wait-until-complete!
   [stack-name
-   client
+   cloudformation-client
    & {:keys [error-on-rollback? ignore-non-existence?]}]
   (if error-on-rollback?
     (logr/info "Waiting for stack to enter a COMPLETE, FAILED, or ROLLBACK status" stack-name)
     (logr/info "Waiting for stack to enter a COMPLETE or FAILED status" stack-name))
   (loop []
-    (let [r (aws/invoke client {:op :DescribeStacks
-                                :request {:StackName stack-name}})
+    (let [r (aws/invoke cloudformation-client
+              {:op :DescribeStacks
+               :request {:StackName stack-name}})
           status (-> r :Stacks first :StackStatus)]
       (cond
         (u/anomaly? r)
@@ -259,7 +270,7 @@
 
         (and error-on-rollback?
           (str/includes? status "ROLLBACK"))
-        (throw (rollback-error stack-name client status))
+        (throw (rollback-error stack-name cloudformation-client status))
 
         (str/ends-with? status "_COMPLETE") status
 
@@ -268,36 +279,42 @@
           (Thread/sleep 5000)
           (recur))))))
 
-(defn- delete-stack! [client name]
-  (loop [r (aws/invoke client {:op :DeleteStack
-                               :request {:StackName name}})]
+(defn- delete-stack! [cloudformation-client name]
+  (loop [r (aws/invoke cloudformation-client
+             {:op :DeleteStack
+              :request {:StackName name}})]
     (cond
       (some-> r u/aws-error-message in-progress-error-message?)
-      (let [status (wait-until-complete! name client :ignore-non-existence? true)]
+      (let [status (wait-until-complete! name cloudformation-client :ignore-non-existence? true)]
         (if (= "DELETE_COMPLETE" status)
           (logr/info "Skipping stack delete because it was already deleted" name)
           (do
             (logr/info "Deleting stack" name)
-            (recur (aws/invoke client {:op :DeleteStack
-                                       :request {:StackName name}})))))
+            (recur (aws/invoke cloudformation-client
+                     {:op :DeleteStack
+                      :request {:StackName name}})))))
 
       (u/anomaly? r)
       (throw (response-error "Error deleting stack" r))
 
       :else
-      (wait-until-complete! name client :ignore-non-existence? true))))
+      (wait-until-complete! name cloudformation-client :ignore-non-existence? true))))
 
-(defn- create-stack! [client request]
+(defn- create-stack! [cloudformation-client request]
   (logr/info "Creating stack" (:StackName request))
-  (let [r (aws/invoke client {:op :CreateStack :request request})]
+  (let [r (aws/invoke cloudformation-client
+            {:op :CreateStack
+             :request request})]
     (if (u/anomaly? r)
       [r false]
       [(:StackId r) true])))
 
-(defn- update-stack! [client request stack-id]
+(defn- update-stack! [cloudformation-client request stack-id]
   (logr/info "Updating stack" stack-id)
   (let [request (assoc request :StackName stack-id)
-        r (aws/invoke client {:op :UpdateStack :request request})
+        r (aws/invoke cloudformation-client
+            {:op :UpdateStack
+             :request request})
         msg (u/aws-error-message r)]
     (cond
       (= "No updates are to be performed." msg) [stack-id false]
@@ -306,7 +323,7 @@
 
 (defn- cou-stack!
   "Create a new stack or update an existing one with the same name."
-  [client {::ds/keys [config]} {:keys [json url]}]
+  [cloudformation-client {::ds/keys [config]} {:keys [json url]}]
   (let [{:keys [capabilities name parameters tags termination-protection?]} config
         request {:Capabilities (seq capabilities)
                  :EnableTerminationProtection (boolean termination-protection?)
@@ -314,33 +331,34 @@
                  :StackName name
                  :Tags (u/tags tags)
                  (if json :TemplateBody :TemplateURL) (or json url)}
-        r (aws/invoke client {:op :DescribeStacks
-                              :request {:StackName name}})
+        r (aws/invoke cloudformation-client
+            {:op :DescribeStacks
+             :request {:StackName name}})
         [{:keys [EnableTerminationProtection StackId StackStatus]}]
         #__ (:Stacks r)]
     (cond
       (= "ROLLBACK_COMPLETE" StackStatus)
       #__ (do
-            (delete-stack! client StackId)
-            (create-stack! client request))
-      (= "ValidationError" (u/aws-error-code r)) (create-stack! client request)
+            (delete-stack! cloudformation-client StackId)
+            (create-stack! cloudformation-client request))
+      (= "ValidationError" (u/aws-error-code r)) (create-stack! cloudformation-client request)
       (u/anomaly? r) [r false]
 
       :else
       (do
         (when (and (not (nil? termination-protection?))
                 (not= EnableTerminationProtection (boolean termination-protection?)))
-          (u/invoke! client
+          (u/invoke! cloudformation-client
             {:op :UpdateTerminationProtection
              :request
              {:EnableTerminationProtection (boolean termination-protection?)
               :StackName StackId}}))
-        (update-stack! client request StackId)))))
+        (update-stack! cloudformation-client request StackId)))))
 
-(defn- execute-change-set! [client stack-name {:keys [changes id]}]
+(defn- execute-change-set! [cloudformation-client stack-name {:keys [changes id]}]
   (when (seq changes)
     ; This op only returns {}
-    (aws/invoke client
+    (aws/invoke cloudformation-client
       {:op :ExecuteChangeSet
        :request
        {:ChangeSetName id
@@ -367,17 +385,17 @@
     {}
     tags-seq))
 
-(defn- describe-stack [client stack-name-or-id]
-  (-> (u/invoke! client
+(defn- describe-stack [cloudformation-client stack-name-or-id]
+  (-> (u/invoke! cloudformation-client
         {:op :DescribeStacks
          :request {:StackName stack-name-or-id}})
     :Stacks
     first))
 
-(defn- get-resources [client stack-name-or-id]
+(defn- get-resources [cloudformation-client stack-name-or-id]
   (->> {:op :ListStackResources
         :request {:StackName stack-name-or-id}}
-    (u/pages-seq client)
+    (u/pages-seq cloudformation-client)
     (mapcat :StackResourceSummaries)))
 
 (defn- resources-map [raw-resources]
@@ -391,19 +409,19 @@
   (-> (str/split stack-id #":" 5)
     (nth 3)))
 
-(defn- stack-instance [client stack-name stack-id]
-  (let [resources (try (get-resources client stack-id)
+(defn- stack-instance [cloudformation-client stack-name stack-id]
+  (let [resources (try (get-resources cloudformation-client stack-id)
                     (catch ExceptionInfo e
                       (throw (ex-info (str "Error getting resources: " (ex-message e))
                                {:stack-id stack-id
                                 :stack-name stack-name}
                                e))))
         resources-map (resources-map resources)
-        describe-r (describe-stack client stack-id)
+        describe-r (describe-stack cloudformation-client stack-id)
         outputs-raw (-> describe-r :Outputs outputs-map-raw)
         parameters-raw (-> describe-r :Parameters parameters-map-raw)
         tags-raw (-> describe-r :Tags tags-map-raw)]
-    {:client client
+    {:client cloudformation-client
      :describe-stack-raw describe-r
      :name stack-name
      :outputs (me/map-vals :OutputValue outputs-raw)
@@ -418,31 +436,32 @@
      :tags-raw tags-raw
      :tags (me/map-vals :Value tags-raw)}))
 
-(defn- start-stack! [{::ds/keys [config instance]
-                      :as signal}]
-  (let [{:keys [change-set name region template]} config
+(defn- start-stack! [signal]
+  (let [signal (update signal ::ds/config normalize-config)
+        {::ds/keys [config instance]} signal
+        {:keys [change-set name region template]} config
         {inst-client :client} instance
-        client (or inst-client
-                 (:client config)
-                 (aws/client {:api :cloudformation :region region}))]
+        cloudformation-client (or inst-client
+                                (:cloudformation-client config)
+                                (aws/client {:api :cloudformation :region region}))]
     (if inst-client
       instance
       (let [{:keys [changes stack-id]} change-set
             ex! (if change-set
                   (fn []
                     (if (seq changes)
-                      (let [r (execute-change-set! client name change-set)]
+                      (let [r (execute-change-set! cloudformation-client name change-set)]
                         (if (u/anomaly? r)
                           [stack-id false]
                           [stack-id true]))
                       [stack-id false]))
-                  #(cou-stack! client signal (template-data config :template template :validate? false)))]
+                  #(cou-stack! cloudformation-client signal (template-data config :template template :validate? false)))]
         (validate! signal)
         (loop [[r updated?] (ex!)]
           (cond
             (some-> r u/aws-error-message in-progress-error-message?)
             (do
-              (wait-until-complete! name client)
+              (wait-until-complete! name cloudformation-client)
               (recur (ex!)))
 
             (u/anomaly? r)
@@ -451,8 +470,8 @@
             :else
             (do
               (when updated?
-                (wait-until-complete! name client :error-on-rollback? true))
-              (stack-instance client name r))))))))
+                (wait-until-complete! name cloudformation-client :error-on-rollback? true))
+              (stack-instance cloudformation-client name r))))))))
 
 (defn- stop!
   "Stops a [[change-set]], [[stack]], or [[stack-properties]]."
@@ -490,9 +509,9 @@
    If this is provided, the :capabilities, :parameters,
    and :template options for the stack are ignored.
 
-   :client
-   An AWS client as produced by
-   `cognitect.aws.client.api/client`
+   :cloudformation-client
+   A Cloudformation AWS client as produced by
+   `(cognitect.aws.client.api/client {:api :cloudformation})`
 
    :lint?
    Validate the template using cfn-lint.
@@ -524,7 +543,10 @@
    :termination-protection?
    Enables or disables termination protection on the stack.
    Ignored when nil.
-   Default: nil."
+   Default: nil.
+
+   Deprecated config options:
+   :client - Renamed to :cloudformation-client."
   [& {:as config}]
   {::ds/config config
    ::ds/start start-stack!
@@ -538,19 +560,21 @@
 
 (defn- get-stack-properties!
   "Checks whether the stack exists and returns its ID."
-  [client {::ds/keys [config]}]
+  [cloudformation-client {::ds/keys [config]}]
   (let [{:keys [name]} config
-        r (aws/invoke client {:op :DescribeStacks
-                              :request {:StackName name}})
+        r (aws/invoke cloudformation-client
+            {:op :DescribeStacks
+             :request {:StackName name}})
         stack-id (some-> r :Stacks first :StackId)]
     (or stack-id r)))
 
 (defn- wait-until-creation-complete!
   [{:as signal
     {:keys [name]} ::ds/config}
-   client]
-  (let [r (aws/invoke client {:op :DescribeStacks
-                              :request {:StackName name}})
+   cloudformation-client]
+  (let [r (aws/invoke cloudformation-client
+            {:op :DescribeStacks
+             :request {:StackName name}})
         status (-> r :Stacks first :StackStatus)]
     (cond
       (u/anomaly? r)
@@ -563,11 +587,12 @@
       :else
       (do
         (Thread/sleep 5000)
-        (recur signal client)))))
+        (recur signal cloudformation-client)))))
 
-(defn- start-stack-properties! [{::ds/keys [config instance system]
-                                 :as signal}]
-  (let [{:keys [region throw-on-missing?]
+(defn- start-stack-properties! [signal]
+  (let [signal (update signal ::ds/config normalize-config)
+        {::ds/keys [config instance system]} signal
+        {:keys [region throw-on-missing?]
          :or {throw-on-missing? true}}
         #__ config
         {:keys [client]} instance
@@ -580,7 +605,7 @@
                (ex-info (str "Validation failed: " (merr/humanize errors))
                  {:errors errors}))
       :else
-      (let [client (or (:client config)
+      (let [client (or (:cloudformation-client config)
                      (aws/client {:api :cloudformation :region region}))
             r (get-stack-properties! client signal)]
         (if (u/anomaly? r)
@@ -602,9 +627,9 @@
 
    config options:
 
-   :client
-   An AWS client as produced by
-   `cognitect.aws.client.api/client`
+   :cloudformation-client
+   A Cloudformation AWS client as produced by
+   `(cognitect.aws.client.api/client {:api :cloudformation})`
 
    :name
    The name of the CloudFormation stack. Must match the
@@ -612,9 +637,12 @@
 
    :region
    The AWS region of the stack. Ignored when :client is present.
-   
+
    :throw-on-missing?
-   Throw an exception if the stack does not exist. Default: true."
+   Throw an exception if the stack does not exist. Default: true.
+
+   Deprecated config options:
+   :client - Renamed to :cloudformation-client."
   [& {:as config}]
   {::ds/config config
    ::ds/start start-stack-properties!
@@ -626,15 +654,16 @@
 (defn- wait-until-complete-change-set!
   [change-set-name
    stack-name
-   client
+   cloudformation-client
    & {:keys [fail-on-no-changes?]}]
   (logr/info "Waiting for change set to enter a COMPLETE or FAILED status" stack-name)
   (loop []
     (let [{:as r :keys [Changes Status StatusReason]}
-          #__ (aws/invoke client {:op :DescribeChangeSet
-                                  :request
-                                  {:ChangeSetName change-set-name
-                                   :StackName stack-name}})]
+          #__ (aws/invoke cloudformation-client
+                {:op :DescribeChangeSet
+                 :request
+                 {:ChangeSetName change-set-name
+                  :StackName stack-name}})]
       (cond
         (and (not fail-on-no-changes?)
           (= "FAILED" Status)
@@ -656,7 +685,7 @@
           (Thread/sleep 5000)
           (recur))))))
 
-(defn- create-change-set! [client {::ds/keys [config]} {:keys [json url]}]
+(defn- create-change-set! [cloudformation-client {::ds/keys [config]} {:keys [json url]}]
   (let [{:keys [capabilities name parameters stack-name tags]} config
         request {:Capabilities (seq capabilities)
                  :ChangeSetName name
@@ -666,7 +695,7 @@
                  (if json :TemplateBody :TemplateURL) (or json url)}
         _ (logr/info "Creating change-set" name "for stack" stack-name)
         op-map {:op :CreateChangeSet :request request}
-        r (aws/invoke client op-map)]
+        r (aws/invoke cloudformation-client op-map)]
     (cond
       (not (u/anomaly? r))
       r
@@ -674,7 +703,7 @@
       (and
         (= "ValidationError" (u/aws-error-code r))
         (str/includes? (u/aws-error-message r) "does not exist"))
-      (aws/invoke client
+      (aws/invoke cloudformation-client
         {:op :CreateChangeSet
          :request (assoc request :ChangeSetType "CREATE")})
 
@@ -682,19 +711,20 @@
       (throw (response-error "Error creating change set" r
                op-map)))))
 
-(defn- start-change-set! [{::ds/keys [config instance]
-                           :as signal}]
-  (let [{:keys [fail-on-no-changes? name region stack-name template]} config
+(defn- start-change-set! [signal]
+  (let [signal (update signal ::ds/config normalize-config)
+        {::ds/keys [config instance]} signal
+        {:keys [fail-on-no-changes? name region stack-name template]} config
         {:keys [client]} instance]
     (if client
       instance
       (let [_ (validate! signal)
-            client (or (:client config)
-                     (aws/client {:api :cloudformation :region region}))
+            cloudformation-client (or (:cloudformation-client config)
+                                    (aws/client {:api :cloudformation :region region}))
             {:keys [Id StackId]}
-            #__ (create-change-set! client signal (template-data config :template template :validate? false))]
+            #__ (create-change-set! cloudformation-client signal (template-data config :template template :validate? false))]
         (let [{:keys [Changes]}
-              #__ (wait-until-complete-change-set! Id StackId client
+              #__ (wait-until-complete-change-set! Id StackId cloudformation-client
                     :fail-on-no-changes? fail-on-no-changes?)]
           {:changes Changes
            :client client
@@ -741,9 +771,9 @@
      \"CAPABILITY_IAM\"
      \"CAPABILITY_NAMED_IAM\"}
 
-   :client
-   An AWS client as produced by
-   `cognitect.aws.client.api/client`
+   :cloudformation-client
+   A Cloudformation AWS client as produced by
+   `(cognitect.aws.client.api/client {:api :cloudformation})`
 
    :fail-on-no-changes?
    Throw an error if the change set does not contain any
@@ -778,7 +808,10 @@
    must point to a template (max size: 1 MB) that's located
    in an Amazon S3 bucket. The location for an Amazon S3
    bucket must start with https://.
-   Ignored when :template is present."
+   Ignored when :template is present.
+
+   Deprecated config options:
+   :client - Renamed to :cloudformation-client."
   [& {:as config}]
   {::ds/config config
    ::ds/start start-change-set!

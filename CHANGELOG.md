@@ -1,5 +1,13 @@
 ## Unreleased
 
+- (deprecation) Rename `:client` config option
+  to `:cloudformation-client` for `change-set`, `stack`, and
+  `stack-properties` components.
+  `:client` is still accepted, but is deprecated.
+  Salmon is normally used in systems that call multiple AWS services.
+  With this change, you can construct a single opts map with keys like
+  `:cloudformation-client` and `:s3-client` that can be passed
+  directly to various components.
 - Add stack name to "creating change-set" log message.
 - Add op-map to ex-data when CreateChangeSet fails.
 - Add `:throw-on-missing?` option to `stack-properties` component.
