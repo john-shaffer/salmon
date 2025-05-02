@@ -685,7 +685,8 @@
           (ds/signal :salmon/early-validate)))))
 
 (deftest test-stack-properties
-  (let [stack-name (test/rand-stack-name)
+  (let [{:keys [regions]} (test/get-config)
+        stack-name (test/rand-stack-name)
         template (assoc template-b
                    :Parameters
                    {:Username {:Description "Username" :Type "String"}}
@@ -695,79 +696,84 @@
                     "OUT2" {:Value "2" :Export {:Name (str stack-name "-OUT2")}}
                          ;; We have to use the parameter to pass linting
                     "Username" {:Value {:Ref "Username"} :Export {:Name (str stack-name "-Username")}}})
-        system (atom nil)
         username (test/rand-iam-username)]
-    (testing ":start works"
-      (reset! system (ds/start (system-b
-                                 (stack-a :capabilities #{"CAPABILITY_NAMED_IAM"}
-                                   :lint? true
-                                   :name stack-name
-                                   :parameters {:Username username}
-                                   :tags (u/tags {:env "test"})
-                                   :template template)
-                                 (stack-properties-a))))
-      (is (-> @system ::ds/instances :services :stack-properties-a))
-      (testing ":start is idempotent"
-        (let [start (System/nanoTime)]
-          (is (= (::ds/instances @system) (::ds/instances (ds/start @system))))
-          (is (> 60 (quot (- (System/nanoTime) start) 1000000)))))
-      (is (= #{:OAI1 :OAI2}
-            (->> @system ::ds/instances :services :stack-properties-a :resources
-              keys set))
-        "Resources are retrieved and attached to the stack-properties instance")
-      (testing "Raw stack description is retrieved and attached to the stack-properties instance"
-        (is (= ["CAPABILITY_NAMED_IAM"]
-              (->> @system ::ds/instances :services :stack-properties-a :describe-stack-raw :Capabilities)))
-        (is (inst?
-              (->> @system ::ds/instances :services :stack-properties-a :describe-stack-raw :CreationTime)))
-        (is (= "CREATE_COMPLETE"
-              (-> @system ::ds/instances :services :stack-properties-a :describe-stack-raw :StackStatus))))
-      (is (= {:Username username}
-            (->> @system ::ds/instances :services :stack-properties-a :parameters))
-        "Parameters are retrieved and attached to the stack-properties instance")
-      (is (= {:Username {:ParameterValue username}}
-            (->> @system ::ds/instances :services :stack-properties-a :parameters-raw))
-        "Parameters are retrieved and attached to the stack-properties instance")
-      (is (= {:OUT1 "1" :OUT2 "2" :Username username}
-            (->> @system ::ds/instances :services :stack-properties-a :outputs))
-        "Outputs are retrieved and attached to the stack-properties instance")
-      (is (= "CREATE_COMPLETE"
-            (-> @system ::ds/instances :services :stack-properties-a :status))
-        "Stack status retrieved and attached to the stack-properties instance")
-      (is (= {:env "test"}
-            (->> @system ::ds/instances :services :stack-properties-a :tags))
-        "Tags are retrieved and attached to the stack-properties instance")
-      (is (= {:OUT1 {:OutputValue "1" :ExportName (str stack-name "-OUT1")
-                     :Description "OUT1 desc"}
-              :OUT2 {:OutputValue "2" :ExportName (str stack-name "-OUT2")}
-              :Username {:OutputValue username :ExportName (str stack-name "-Username")}}
-            (->> @system ::ds/instances :services :stack-properties-a :outputs-raw))
-        "Outputs are retrieved and attached to the stack-properties instance")
-      (testing ":stop works"
-        (reset! system (ds/stop @system))
-        (let [stack-id (-> @system ::ds/instances :services :stack-a :stack-id)]
-          (is (= {:name stack-name :stack-id stack-id}
-                (-> @system ::ds/instances :services :stack-properties-a))))
-        (testing ":stop is idempotent"
-          (let [start (System/nanoTime)]
-            (is (= (::ds/instances @system) (::ds/instances (ds/stop @system))))
-            (is (> 60 (quot (- (System/nanoTime) start) 1000000)))))
-        (testing "system can be restarted after :stop"
-          (reset! system (ds/start @system))
-          (is (-> @system ::ds/instances :services :stack-properties-a :resources))))
-      (testing ":delete works"
-        (let [stack-id (-> @system ::ds/instances :services :stack-a :stack-id)]
-          (reset! system (ds/signal @system :salmon/delete))
-          (is (= {:name stack-name :stack-id stack-id}
-                (-> @system ::ds/instances :services :stack-properties-a))))
-        (testing ":delete is idempotent"
-          (let [start (System/nanoTime)]
-            (is (= (::ds/instances @system) (::ds/instances (ds/signal @system :salmon/delete))))
-            (is (> 60 (quot (- (System/nanoTime) start) 1000000)))))
-        (testing "system can be restarted after :delete"
-          (reset! system (ds/start @system))
-          (is (-> @system ::ds/instances :services :stack-properties-a :resources)))
-        (ds/signal @system :salmon/delete)))))
+    (doseq [region regions
+            :let [system-def (system-b
+                               (stack-a
+                                 :capabilities #{"CAPABILITY_NAMED_IAM"}
+                                 :lint? true
+                                 :name stack-name
+                                 :parameters {:Username username}
+                                 :region region
+                                 :tags (u/tags {:env "test"})
+                                 :template template)
+                               (stack-properties-a
+                                 :region region))]]
+      (test/with-system-delete [system (assoc system-def :start? false)]
+        (testing ":start works"
+          (reset! system (ds/start system-def))
+          (is (-> @system ::ds/instances :services :stack-properties-a))
+          (testing ":start is idempotent"
+            (let [start (System/nanoTime)]
+              (is (= (::ds/instances @system) (::ds/instances (ds/start @system))))
+              (is (> 60 (quot (- (System/nanoTime) start) 1000000)))))
+          (is (= #{:OAI1 :OAI2}
+                (->> @system ::ds/instances :services :stack-properties-a :resources
+                  keys set))
+            "Resources are retrieved and attached to the stack-properties instance")
+          (testing "Raw stack description is retrieved and attached to the stack-properties instance"
+            (is (= ["CAPABILITY_NAMED_IAM"]
+                  (->> @system ::ds/instances :services :stack-properties-a :describe-stack-raw :Capabilities)))
+            (is (inst?
+                  (->> @system ::ds/instances :services :stack-properties-a :describe-stack-raw :CreationTime)))
+            (is (= "CREATE_COMPLETE"
+                  (-> @system ::ds/instances :services :stack-properties-a :describe-stack-raw :StackStatus))))
+          (is (= {:Username username}
+                (->> @system ::ds/instances :services :stack-properties-a :parameters))
+            "Parameters are retrieved and attached to the stack-properties instance")
+          (is (= {:Username {:ParameterValue username}}
+                (->> @system ::ds/instances :services :stack-properties-a :parameters-raw))
+            "Parameters are retrieved and attached to the stack-properties instance")
+          (is (= {:OUT1 "1" :OUT2 "2" :Username username}
+                (->> @system ::ds/instances :services :stack-properties-a :outputs))
+            "Outputs are retrieved and attached to the stack-properties instance")
+          (is (= "CREATE_COMPLETE"
+                (-> @system ::ds/instances :services :stack-properties-a :status))
+            "Stack status retrieved and attached to the stack-properties instance")
+          (is (= {:env "test"}
+                (->> @system ::ds/instances :services :stack-properties-a :tags))
+            "Tags are retrieved and attached to the stack-properties instance")
+          (is (= {:OUT1 {:OutputValue "1" :ExportName (str stack-name "-OUT1")
+                         :Description "OUT1 desc"}
+                  :OUT2 {:OutputValue "2" :ExportName (str stack-name "-OUT2")}
+                  :Username {:OutputValue username :ExportName (str stack-name "-Username")}}
+                (->> @system ::ds/instances :services :stack-properties-a :outputs-raw))
+            "Outputs are retrieved and attached to the stack-properties instance")
+          (testing ":stop works"
+            (reset! system (ds/stop @system))
+            (let [stack-id (-> @system ::ds/instances :services :stack-a :stack-id)]
+              (is (= {:name stack-name :stack-id stack-id}
+                    (-> @system ::ds/instances :services :stack-properties-a))))
+            (testing ":stop is idempotent"
+              (let [start (System/nanoTime)]
+                (is (= (::ds/instances @system) (::ds/instances (ds/stop @system))))
+                (is (> 60 (quot (- (System/nanoTime) start) 1000000)))))
+            (testing "system can be restarted after :stop"
+              (reset! system (ds/start @system))
+              (is (-> @system ::ds/instances :services :stack-properties-a :resources))))
+          (testing ":delete works"
+            (let [stack-id (-> @system ::ds/instances :services :stack-a :stack-id)]
+              (reset! system (ds/signal @system :salmon/delete))
+              (is (= {:name stack-name :stack-id stack-id}
+                    (-> @system ::ds/instances :services :stack-properties-a))))
+            (testing ":delete is idempotent"
+              (let [start (System/nanoTime)]
+                (is (= (::ds/instances @system) (::ds/instances (ds/signal @system :salmon/delete))))
+                (is (> 60 (quot (- (System/nanoTime) start) 1000000)))))
+            (testing "system can be restarted after :delete"
+              (reset! system (ds/start @system))
+              (is (-> @system ::ds/instances :services :stack-properties-a :resources)))
+            (ds/signal @system :salmon/delete)))))))
 
 (deftest test-stack-rollback-error-message
   (let [stack-name (test/rand-stack-name)
