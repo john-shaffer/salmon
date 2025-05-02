@@ -561,7 +561,9 @@
 
 (defn- start-stack-properties! [{::ds/keys [config instance system]
                                  :as signal}]
-  (let [{:keys [region]} config
+  (let [{:keys [region throw-on-missing?]
+         :or {throw-on-missing? true}}
+        #__ config
         {:keys [client]} instance
         schema (-> system ::ds/component-def :schema)
         errors (when-not client
@@ -576,7 +578,9 @@
                      (aws/client {:api :cloudformation :region region}))
             r (get-stack-properties! client signal)]
         (if (u/anomaly? r)
-          (throw (response-error "Error creating stack properties" r))
+          (if (or throw-on-missing? (not (str/includes? (u/aws-error-message r) "does not exist")))
+            (throw (response-error "Error creating stack properties" r))
+            {:client client})
           (when (wait-until-creation-complete! signal client)
             (stack-instance client (:name config) r)))))))
 
@@ -598,7 +602,10 @@
    regex #\"^[a-zA-Z][-a-zA-Z0-9]{0,127}$\"
 
    :region
-   The AWS region of the stack. Ignored when :client is present."
+   The AWS region of the stack. Ignored when :client is present.
+   
+   :throw-on-missing?
+   Throw an exception if the stack does not exist. Default: true."
   [& {:as config}]
   {::ds/config config
    ::ds/start start-stack-properties!

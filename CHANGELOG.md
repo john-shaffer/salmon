@@ -2,6 +2,7 @@
 
 - Add stack name to "creating change-set" log message.
 - Add op-map to ex-data when CreateChangeSet fails.
+- Add `:throw-on-missing?` option to `stack-properties` component.
 
 ## v0.26.0 (2025-03-31)
 
