@@ -737,6 +737,8 @@
           (is (= {:OUT1 "1" :OUT2 "2" :Username username}
                 (->> @system ::ds/instances :services :stack-properties-a :outputs))
             "Outputs are retrieved and attached to the stack-properties instance")
+          (is (= (name region) (-> @system ::ds/instances :services :stack-properties-a :region))
+            "Region is correct")
           (is (= "CREATE_COMPLETE"
                 (-> @system ::ds/instances :services :stack-properties-a :status))
             "Stack status retrieved and attached to the stack-properties instance")

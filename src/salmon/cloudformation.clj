@@ -387,6 +387,10 @@
     {}
     raw-resources))
 
+(defn stack-id->region [stack-id]
+  (-> (str/split stack-id #":" 5)
+    (nth 3)))
+
 (defn- stack-instance [client stack-name stack-id]
   (let [resources (try (get-resources client stack-id)
                     (catch ExceptionInfo e
@@ -406,6 +410,7 @@
      :outputs-raw outputs-raw
      :parameters (me/map-vals :ParameterValue parameters-raw)
      :parameters-raw parameters-raw
+     :region (stack-id->region stack-id)
      :resources resources-map
      :resource-ids (me/map-vals :PhysicalResourceId resources-map)
      :stack-id stack-id

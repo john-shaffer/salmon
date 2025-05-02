@@ -3,6 +3,7 @@
 - Add stack name to "creating change-set" log message.
 - Add op-map to ex-data when CreateChangeSet fails.
 - Add `:throw-on-missing?` option to `stack-properties` component.
+- Add `:region` to stack and stack-properties instances.
 - Add `:status` to stack and stack-properties instances.
 
 ## v0.26.0 (2025-03-31)
