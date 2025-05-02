@@ -242,7 +242,7 @@
                     :lint? true
                     :regions [:us-east-1]
                     :template sm-template)
-               ds/start))
+                ds/start))
           (testing "Linting fails for a valid resource that is not supported in a region"
             (is (thrown-with-msg?
                   ExceptionInfo
@@ -310,9 +310,12 @@
                                  (cfn/template :template template-a)))]]
       (test/with-system-delete [sys system-def]
         (let [{:keys [stack-a]} (-> @sys ::ds/instances :services)]
-          (is (= "CREATE_COMPLETE"
-                (-> stack-a :resources :OAI1 :ResourceStatus))
-            "A stack can sucessfully be created from a template component"))))))
+          (testing "A stack can sucessfully be created from a template component"
+            (is (= "CREATE_COMPLETE" (:status stack-a))
+              "Stack is created")
+            (is (= "CREATE_COMPLETE"
+                  (-> stack-a :resources :OAI1 :ResourceStatus))
+              "Resources are created")))))))
 
 (deftest test-lifecycle
   (let [{:keys [regions]} (test/get-config)
@@ -454,15 +457,16 @@
 
 (deftest test-update
   (let [{:keys [regions]} (test/get-config)
-        name (test/rand-stack-name)]
+        stack-name (test/rand-stack-name)]
     (doseq [region regions
             :let [system-def (system-a (stack-a
-                                         :name name
+                                         :name stack-name
                                          :region region
                                          :template template-a))]]
       (test/with-system-delete [system system-def]
         (testing "Template update works during :start"
-          (reset! system (ds/start (system-a (stack-a :name name :template template-b))))
+          (reset! system (ds/start (system-a (stack-a :name stack-name :region region :template template-b))))
+          (is (= "UPDATE_COMPLETE" (-> @system ::ds/instances :services :stack-a :status)))
           (is (= #{:OAI1 :OAI2}
                 (->> @system ::ds/instances :services :stack-a :resources
                   keys set))))))))
@@ -715,7 +719,9 @@
         (is (= ["CAPABILITY_NAMED_IAM"]
               (->> @system ::ds/instances :services :stack-properties-a :describe-stack-raw :Capabilities)))
         (is (inst?
-              (->> @system ::ds/instances :services :stack-properties-a :describe-stack-raw :CreationTime))))
+              (->> @system ::ds/instances :services :stack-properties-a :describe-stack-raw :CreationTime)))
+        (is (= "CREATE_COMPLETE"
+              (-> @system ::ds/instances :services :stack-properties-a :describe-stack-raw :StackStatus))))
       (is (= {:Username username}
             (->> @system ::ds/instances :services :stack-properties-a :parameters))
         "Parameters are retrieved and attached to the stack-properties instance")
@@ -725,6 +731,9 @@
       (is (= {:OUT1 "1" :OUT2 "2" :Username username}
             (->> @system ::ds/instances :services :stack-properties-a :outputs))
         "Outputs are retrieved and attached to the stack-properties instance")
+      (is (= "CREATE_COMPLETE"
+            (-> @system ::ds/instances :services :stack-properties-a :status))
+        "Stack status retrieved and attached to the stack-properties instance")
       (is (= {:env "test"}
             (->> @system ::ds/instances :services :stack-properties-a :tags))
         "Tags are retrieved and attached to the stack-properties instance")

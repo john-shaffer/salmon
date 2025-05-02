@@ -409,6 +409,7 @@
      :resources resources-map
      :resource-ids (me/map-vals :PhysicalResourceId resources-map)
      :stack-id stack-id
+     :status (:StackStatus describe-r)
      :tags-raw tags-raw
      :tags (me/map-vals :Value tags-raw)}))
 
