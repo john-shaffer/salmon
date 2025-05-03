@@ -1,5 +1,7 @@
 ## Unreleased
 
+## v0.27.0 (2025-05-02)
+
 - (deprecation) Rename `:client` config option
   to `:cloudformation-client` for `change-set`, `stack`, and
   `stack-properties` components.
