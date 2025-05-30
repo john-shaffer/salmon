@@ -740,17 +740,17 @@
             _ (validate! signal)
             {:keys [cloudformation-client]} config
             {:keys [Id StackId]}
-            #__ (create-change-set! cloudformation-client signal (template-data config :template template :validate? false))]
-        (let [{:keys [Changes]}
-              #__ (wait-until-complete-change-set! Id StackId cloudformation-client
-                    :fail-on-no-changes? fail-on-no-changes?)]
-          {:changes Changes
-           :client client
-           :cloudformation-client cloudformation-client
-           :id Id
-           :name name
-           :stack-id StackId
-           :stack-name stack-name})))))
+            #__ (create-change-set! cloudformation-client signal (template-data config :template template :validate? false))
+            {:keys [Changes]}
+            #__ (wait-until-complete-change-set! Id StackId cloudformation-client
+                  :fail-on-no-changes? fail-on-no-changes?)]
+        {:changes Changes
+         :client client
+         :cloudformation-client cloudformation-client
+         :id Id
+         :name name
+         :stack-id StackId
+         :stack-name stack-name}))))
 
 (defn- delete-change-set!
   [{:keys [::ds/instance]
