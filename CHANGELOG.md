@@ -1,5 +1,7 @@
 ## Unreleased
 
+- Add `salmon.util/b64-decode`.
+
 ## v0.28.0 (2025-05-30)
 
 - Add `:aws-client-opts` option to `change-set`, `stack`, and

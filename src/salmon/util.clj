@@ -1,7 +1,9 @@
 (ns salmon.util
   (:require
    [cognitect.aws.client.api :as aws]
-   [medley.core :as me]))
+   [medley.core :as me])
+  (:import
+   (java.util Base64)))
 
 (defn anomaly?
   "Returns true when the response (from cognitect.aws.client.api)
@@ -24,6 +26,11 @@
     (some-> response :Response :Errors :Error :Message)
     (some-> response :Error :Message)
     (:cognitect.anomalies/message response)))
+
+(defn b64-decode
+  "Decodes a base64-encoded string to a byte array."
+  ^bytes [^String s]
+  (.decode (Base64/getDecoder) s))
 
 (defn ->ex-info
   "Returns an [[ex-info]] that represents a failed AWS API response."
