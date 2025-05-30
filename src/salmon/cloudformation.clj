@@ -42,11 +42,19 @@
   "Returns a normalized config with deprecated options warned about
    and replaced with current options."
   [config]
-  (let [{:keys [cloudformation-client client]} config]
+  (let [{:keys [aws-client-opts cloudformation-client client region]} config]
     (when (and client (not= client cloudformation-client))
       (logr/warn "The :client option is deprecated. Use :cloudformation-client instead."))
-    (-> (assoc config :cloudformation-client (or cloudformation-client client))
+    (-> (assoc config
+          :aws-client-opts (update aws-client-opts :region #(or % region))
+          :cloudformation-client (or cloudformation-client client))
       (dissoc :client))))
+
+(defn- init-cloudformation-client [config]
+  (assoc config
+    :cloudformation-client
+    (or (:cloudformation-client config)
+      (-> config :aws-client-opts (assoc :api :cloudformation) aws/client))))
 
 (defn- cfn-lint! [{:keys [region regions]} template]
   (fs/with-temp-dir [dir {:prefix "salmon-cloudformation"}]
@@ -440,12 +448,13 @@
 (defn- start-stack! [signal]
   (let [signal (update signal ::ds/config normalize-config)
         {::ds/keys [config instance]} signal
-        {:keys [change-set name region template]} config
-        cloudformation-client (or (:cloudformation-client config)
-                                (aws/client {:api :cloudformation :region region}))]
+        {:keys [change-set name template]} config]
     (if (:cloudformation-client instance)
       instance
-      (let [{:keys [changes stack-id]} change-set
+      (let [signal (update signal ::ds/config init-cloudformation-client)
+            {::ds/keys [config]} signal
+            {:keys [cloudformation-client]} config
+            {:keys [changes stack-id]} change-set
             ex! (if change-set
                   (fn []
                     (if (seq changes)
@@ -495,6 +504,10 @@
    :salmon/early-validate
 
    config options:
+
+   :aws-client-opts
+   A map of options to pass to [[cognitect.aws.client.api/client]].
+   Only used when `:cloudformation-client` is not provided.
 
    :capabilities
    A set of IAM capabilities used when creating or
@@ -604,8 +617,9 @@
                (ex-info (str "Validation failed: " (merr/humanize errors))
                  {:errors errors}))
       :else
-      (let [cloudformation-client (or (:cloudformation-client config)
-                                    (aws/client {:api :cloudformation :region region}))
+      (let [signal (update signal ::ds/config init-cloudformation-client)
+            {::ds/keys [config]} signal
+            {:keys [cloudformation-client]} config
             r (get-stack-properties! cloudformation-client signal)]
         (if (u/anomaly? r)
           (if (or throw-on-missing? (not (str/includes? (u/aws-error-message r) "does not exist")))
@@ -625,6 +639,10 @@
    Supported signals: ::ds/start, ::ds/stop
 
    config options:
+
+   :aws-client-opts
+   A map of options to pass to [[cognitect.aws.client.api/client]].
+   Only used when `:cloudformation-client` is not provided.
 
    :cloudformation-client
    A Cloudformation AWS client as produced by
@@ -713,13 +731,14 @@
 (defn- start-change-set! [signal]
   (let [signal (update signal ::ds/config normalize-config)
         {::ds/keys [config instance]} signal
-        {:keys [fail-on-no-changes? name region stack-name template]} config
+        {:keys [fail-on-no-changes? name stack-name template]} config
         {:keys [client]} instance]
     (if client
       instance
-      (let [_ (validate! signal)
-            cloudformation-client (or (:cloudformation-client config)
-                                    (aws/client {:api :cloudformation :region region}))
+      (let [signal (update signal ::ds/config init-cloudformation-client)
+            {::ds/keys [config]} signal
+            _ (validate! signal)
+            {:keys [cloudformation-client]} config
             {:keys [Id StackId]}
             #__ (create-change-set! cloudformation-client signal (template-data config :template template :validate? false))]
         (let [{:keys [Changes]}
@@ -763,6 +782,10 @@
    :salmon/early-validate
 
    config options:
+
+   :aws-client-opts
+   A map of options to pass to [[cognitect.aws.client.api/client]].
+   Only used when `:cloudformation-client` is not provided.
 
    :capabilities
    A set of IAM capabilities used when creating or
