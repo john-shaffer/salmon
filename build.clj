@@ -4,7 +4,7 @@
             [org.corfield.build :as bb]))
 
 (def lib 'rs.shaffe/salmon)
-(def version "0.27.0")
+(def version "0.28.0")
 
 (defn get-version [opts]
   (str version (when (:snapshot opts) "-SNAPSHOT")))

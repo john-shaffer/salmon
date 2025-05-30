@@ -1,5 +1,11 @@
 ## Unreleased
 
+## v0.28.0 (2025-05-30)
+
+- Add `:aws-client-opts` option to `change-set`, `stack`, and
+  `stack-properties` components. This allows providing additional
+  config to the AWS client.
+
 ## v0.27.0 (2025-05-02)
 
 - (deprecation) Rename `:client` config option
