@@ -9,7 +9,7 @@
         com.cognitect.aws/s3 {:mvn/version "871.2.31.23"}
         com.cognitect.aws/ssm {:mvn/version "871.2.31.23"}
         com.rpl/specter {:mvn/version "1.1.4"}
-        io.github.clojure/tools.build {:mvn/version "0.10.8"}
+        io.github.clojure/tools.build {:mvn/version "0.10.9"}
         medley/medley {:mvn/version "1.4.0"}
         org.clojure/data.csv {:mvn/version "1.1.0"}
         org.clojure/data.json {:mvn/version "2.5.1"}
