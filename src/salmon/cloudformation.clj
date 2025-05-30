@@ -732,8 +732,8 @@
   (let [signal (update signal ::ds/config normalize-config)
         {::ds/keys [config instance]} signal
         {:keys [fail-on-no-changes? name stack-name template]} config
-        {:keys [client]} instance]
-    (if client
+        {:keys [cloudformation-client]} instance]
+    (if cloudformation-client
       instance
       (let [signal (update signal ::ds/config init-cloudformation-client)
             {::ds/keys [config]} signal
@@ -745,7 +745,7 @@
             #__ (wait-until-complete-change-set! Id StackId cloudformation-client
                   :fail-on-no-changes? fail-on-no-changes?)]
         {:changes Changes
-         :client client
+         :client cloudformation-client
          :cloudformation-client cloudformation-client
          :id Id
          :name name
