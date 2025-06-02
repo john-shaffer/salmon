@@ -3,6 +3,8 @@
 - Add `salmon.util/b64-decode`.
 - Add `salmon.docker` namespace with convenience functions for
   building, tagging, and pushing docker images.
+- Add `salmon.ecr` namespace with convenience functions for
+  logging in to ECR and pushing docker images to ECR.
 
 ## v0.28.0 (2025-05-30)
 
