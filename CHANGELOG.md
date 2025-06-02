@@ -1,6 +1,8 @@
 ## Unreleased
 
 - Add `salmon.util/b64-decode`.
+- Add `salmon.docker` namespace with convenience functions for
+  building, tagging, and pushing docker images.
 
 ## v0.28.0 (2025-05-30)
 
