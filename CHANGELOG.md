@@ -22,6 +22,9 @@
   With this change, you can construct a single opts map with keys like
   `:cloudformation-client` and `:s3-client` that can be passed
   directly to various components.
+  - Note: As of v0.28.0, it is recommended to pass `:aws-client-opts`
+   rather than a specific client instance. This is because
+   creating individual clients can become cumbersome.
 - (deprecation) Deprecate `:client` instance key for
   `change-set`, `stack`, and `stack-properties` components.
   The new key is `:cloudformation-client`. `:client` is still
