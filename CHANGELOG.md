@@ -1,5 +1,7 @@
 ## Unreleased
 
+## v0.29.1 (2025-06-17)
+
 - Add missing `rs.shaffe/sys-ext` dependency.
   This is used by `salmon.ecr`.
 
