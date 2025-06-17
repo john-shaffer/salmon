@@ -16,7 +16,8 @@
         org.clojure/data.json {:mvn/version "2.5.1"}
         org.clojure/tools.logging {:mvn/version "1.3.0"}
         party.donut/system {:mvn/version "1.0.255"
-                            :exclusions [tailrecursion/cljs-priority-map]}}
+                            :exclusions [tailrecursion/cljs-priority-map]}
+        rs.shaffe/sys-ext {:mvn/version "0.2.0"}}
  :aliases
  {:antq
   {:deps

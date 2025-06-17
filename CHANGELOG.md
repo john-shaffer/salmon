@@ -1,5 +1,8 @@
 ## Unreleased
 
+- Add missing `rs.shaffe/sys-ext` dependency.
+  This is used by `salmon.ecr`.
+
 ## v0.29.0 (2025-06-02)
 
 - Add `salmon.util/b64-decode`.
