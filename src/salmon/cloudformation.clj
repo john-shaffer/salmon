@@ -365,14 +365,13 @@
               :StackName StackId}}))
         (update-stack! cloudformation-client request StackId)))))
 
-(defn- execute-change-set! [cloudformation-client stack-name {:keys [changes id]}]
-  (when (seq changes)
-    ; This op only returns {}
-    (aws/invoke cloudformation-client
-      {:op :ExecuteChangeSet
-       :request
-       {:ChangeSetName id
-        :StackName stack-name}})))
+(defn- execute-change-set! [cloudformation-client stack-name {:keys [id]}]
+  ; This op only returns {}
+  (aws/invoke cloudformation-client
+    {:op :ExecuteChangeSet
+     :request
+     {:ChangeSetName id
+      :StackName stack-name}}))
 
 (defn- outputs-map-raw [outputs-seq]
   (reduce
@@ -456,10 +455,10 @@
       (let [signal (update signal ::ds/config init-cloudformation-client)
             {::ds/keys [config]} signal
             {:keys [cloudformation-client]} config
-            {:keys [changes stack-id]} change-set
+            {:keys [changes execution-status stack-id]} change-set
             ex! (if change-set
                   (fn []
-                    (if (seq changes)
+                    (if (or (seq changes) (= "AVAILABLE" execution-status))
                       (let [r (execute-change-set! cloudformation-client name change-set)]
                         (if (u/anomaly? r)
                           [stack-id false]
@@ -750,12 +749,13 @@
             {:keys [cloudformation-client]} config
             {:keys [Id StackId]}
             #__ (create-change-set! cloudformation-client signal (template-data config :template template :validate? false))
-            {:keys [Changes]}
+            {:keys [Changes ExecutionStatus]}
             #__ (wait-until-complete-change-set! Id StackId cloudformation-client
                   :fail-on-no-changes? fail-on-no-changes?)]
         {:changes Changes
          :client cloudformation-client
          :cloudformation-client cloudformation-client
+         :execution-status ExecutionStatus
          :id Id
          :name name
          :stack-id StackId

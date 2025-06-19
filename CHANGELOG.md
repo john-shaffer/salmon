@@ -9,6 +9,9 @@
   These can be used by donut.system's built-in
   validation plugin.
 - Allow nil values for optional keys in template config-schema.
+- Fix change sets not being applied if they did not change any
+  resources but did change an output.
+  - Add `:execution-status` to change set instance to support this.
 
 ## v0.29.1 (2025-06-17)
 
