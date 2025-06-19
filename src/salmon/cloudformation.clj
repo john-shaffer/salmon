@@ -604,7 +604,7 @@
 (defn- start-stack-properties! [signal]
   (let [signal (update signal ::ds/config normalize-config)
         {::ds/keys [config instance system]} signal
-        {:keys [region throw-on-missing?]
+        {:keys [throw-on-missing?]
          :or {throw-on-missing? true}}
         #__ config
         {:keys [cloudformation-client]} instance
