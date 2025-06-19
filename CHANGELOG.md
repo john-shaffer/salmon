@@ -3,6 +3,8 @@
 - Fix a possible infinite loop when checking the state of
   a change set that failed to create. This can happen when
   the change set's name is invalid.
+- Throw an error immediately when a change set for a new stack
+  fails to create.
 - Add `:donut.system/config-schema` values to components.
   These can be used by donut.system's built-in
   validation plugin.

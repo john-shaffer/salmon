@@ -721,21 +721,21 @@
                  (if json :TemplateBody :TemplateURL) (or json url)}
         _ (logr/info "Creating change-set" name "for stack" stack-name)
         op-map {:op :CreateChangeSet :request request}
-        r (aws/invoke cloudformation-client op-map)]
-    (cond
-      (not (u/anomaly? r))
-      r
-
-      (and
-        (= "ValidationError" (u/aws-error-code r))
-        (str/includes? (u/aws-error-message r) "does not exist"))
-      (aws/invoke cloudformation-client
-        {:op :CreateChangeSet
-         :request (assoc request :ChangeSetType "CREATE")})
-
-      :else
+        r (aws/invoke cloudformation-client op-map)
+        new-stack? (and (u/anomaly? r)
+                     (= "ValidationError" (u/aws-error-code r))
+                     (str/includes? (u/aws-error-message r) "does not exist"))
+        op-map (if new-stack?
+                 {:op :CreateChangeSet
+                  :request (assoc request :ChangeSetType "CREATE")}
+                 op-map)
+        r (if new-stack?
+            (aws/invoke cloudformation-client op-map)
+            r)]
+    (if (u/anomaly? r)
       (throw (response-error "Error creating change set" r
-               op-map)))))
+               op-map))
+      r)))
 
 (defn- start-change-set! [signal]
   (let [signal (update signal ::ds/config normalize-config)
