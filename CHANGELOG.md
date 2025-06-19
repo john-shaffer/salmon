@@ -1,5 +1,7 @@
 ## Unreleased
 
+## v0.30.0 (2025-06-19)
+
 - Fix a possible infinite loop when checking the state of
   a change set that failed to create. This can happen when
   the change set's name is invalid.
