@@ -12,6 +12,8 @@
 - Fix change sets not being applied if they did not change any
   resources but did change an output.
   - Add `:execution-status` to change set instance to support this.
+- Update `salmon.ecr/get-auth-token` to work with the response
+  format for public ECR repositories.
 
 ## v0.29.1 (2025-06-17)
 

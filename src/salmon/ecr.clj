@@ -8,12 +8,14 @@
    [sys-ext.core :as se]))
 
 (defn get-auth-token [ecr-client]
-  (let [{:as m :keys [authorizationToken]}
-        #__ (-> (u/invoke! ecr-client
-                  {:op :GetAuthorizationToken
-                   :request {}})
-              :authorizationData
-              first)
+  (let [auth-data (:authorizationData
+                    (u/invoke! ecr-client
+                      {:op :GetAuthorizationToken
+                       :request {}}))
+        {:as m :keys [authorizationToken]}
+        #__ (if (map? auth-data)
+              auth-data
+              (first auth-data))
         [user pass] (-> authorizationToken
                       u/b64-decode
                       String.
