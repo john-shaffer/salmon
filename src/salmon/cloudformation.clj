@@ -98,7 +98,7 @@
       template-data)))
 
 (def ^{:private true}
-  change-set-schema
+  change-set-config-schema
   [:map
    [:capabilities
     {:optional true}
@@ -114,7 +114,7 @@
      [:re re-stack-name]]]])
 
 (def ^{:private true}
-  stack-schema
+  stack-config-schema
   [:map
    [:capabilities
     {:optional true}
@@ -126,7 +126,7 @@
      [:re re-stack-name]]]])
 
 (def ^{:private true}
-  stack-properties-schema
+  stack-properties-config-schema
   [:map
    [:name
     [:and
@@ -561,14 +561,15 @@
    :client - Renamed to :cloudformation-client."
   [& {:as config}]
   {::ds/config config
+   ::ds/config-schema stack-config-schema
    ::ds/start start-stack!
    ::ds/stop stop!
    :salmon/delete delete!
-   :salmon/early-schema (val/allow-refs stack-schema)
+   :salmon/early-schema (val/allow-refs stack-config-schema)
    :salmon/early-validate
    (fn [signal]
      (validate! signal :pre? true))
-   :schema stack-schema})
+   :schema stack-config-schema})
 
 (defn- get-stack-properties!
   "Checks whether the stack exists and returns its ID."
@@ -662,11 +663,12 @@
    :client - Renamed to :cloudformation-client."
   [& {:as config}]
   {::ds/config config
+   ::ds/config-schema stack-properties-config-schema
    ::ds/start start-stack-properties!
    ::ds/stop stop!
    :salmon/delete stop!
-   :salmon/early-schema (val/allow-refs stack-properties-schema)
-   :schema stack-properties-schema})
+   :salmon/early-schema (val/allow-refs stack-properties-config-schema)
+   :schema stack-properties-config-schema})
 
 (defn- wait-until-complete-change-set!
   [change-set-name
@@ -842,11 +844,12 @@
    :client - Renamed to :cloudformation-client."
   [& {:as config}]
   {::ds/config config
+   ::ds/config-schema change-set-config-schema
    ::ds/start start-change-set!
    ::ds/stop stop!
    :salmon/delete delete-change-set!
-   :salmon/early-schema (val/allow-refs change-set-schema)
+   :salmon/early-schema (val/allow-refs change-set-config-schema)
    :salmon/early-validate
    (fn [signal]
      (validate! signal :pre? true))
-   :schema change-set-schema})
+   :schema change-set-config-schema})
