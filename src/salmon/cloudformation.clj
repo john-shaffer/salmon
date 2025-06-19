@@ -517,7 +517,7 @@
      \"CAPABILITY_NAMED_IAM\"}
 
    :change-set
-   A reference to a [[change-set]] component.
+   A reference to a [[change-set]] instance.
    If this is provided, the :capabilities, :parameters,
    and :template options for the stack are ignored.
 
