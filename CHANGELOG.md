@@ -14,6 +14,8 @@
   - Add `:execution-status` to change set instance to support this.
 - Update `salmon.ecr/get-auth-token` to work with the response
   format for public ECR repositories.
+- Add an `:ecr-api` option to `salmon.ecr/push-group` to allow
+  using the `:ecr-public` API instead of the default `:ecr` API.
 
 ## v0.29.1 (2025-06-17)
 

@@ -23,14 +23,14 @@
     (assoc m :password pass :username user)))
 
 (defn push-group
-  [{:keys [aws-client-opts image-ref repo-uri]}]
+  [{:keys [aws-client-opts ecr-api image-ref repo-uri]}]
   {:ecr-auth-token
    (se/call get-auth-token
      (ds/local-ref [:ecr-client :client]))
    :ecr-client
    (se/call
      (fn [opts]
-       {:client (aws/client (assoc opts :api :ecr))})
+       {:client (aws/client (assoc opts :api (or ecr-api :ecr)))})
      aws-client-opts)
    :login
    (se/call docker/login!
