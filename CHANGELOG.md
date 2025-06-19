@@ -6,6 +6,7 @@
 - Add `:donut.system/config-schema` values to components.
   These can be used by donut.system's built-in
   validation plugin.
+- Allow nil values for optional keys in template config-schema.
 
 ## v0.29.1 (2025-06-17)
 

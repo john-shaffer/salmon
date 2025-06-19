@@ -137,10 +137,12 @@
   template-config-schema
   [:map
    [:lint?
-    {:optional true}]
+    {:optional true}
+    [:or :nil :boolean]]
    [:regions
     {:optional true}
-    [:sequential [:or :keyword :string]]]
+    [:or :nil
+     [:sequential [:or :keyword :string]]]]
    [:template
     [:or ds/DonutRef
      [:map]]]])
