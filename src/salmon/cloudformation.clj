@@ -697,6 +697,11 @@
         (#{"CREATE_COMPLETE" "DELETE_COMPLETE"} Status)
         r
 
+        (u/anomaly? r)
+        (throw (response-error "Error while waiting for change set to enter a COMPLETE or FAILED status" r
+                 {:change-set-name change-set-name
+                  :stack-name stack-name}))
+
         :else
         (do
           (Thread/sleep 5000)

@@ -1,5 +1,9 @@
 ## Unreleased
 
+- Fix a possible infinite loop when checking the state of
+  a change set that failed to create. This can happen when
+  the change set's name is invalid.
+
 ## v0.29.1 (2025-06-17)
 
 - Add missing `rs.shaffe/sys-ext` dependency.
