@@ -1,5 +1,8 @@
 ## Unreleased
 
+- Upgrade medley from old coordinates medley/medley 1.4.0
+  to dev.weavejester/medley 1.9.0.
+
 ## v0.30.0 (2025-06-19)
 
 - Fix a possible infinite loop when checking the state of
