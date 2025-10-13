@@ -2,14 +2,14 @@
  :deps {org.clojure/clojure {:mvn/version "1.12.0"}
         babashka/fs {:mvn/version "0.5.27"}
         com.cognitect.aws/api {:mvn/version "0.8.774"}
-        com.cognitect.aws/cloudformation {:mvn/version "871.2.33.5"}
-        com.cognitect.aws/ec2 {:mvn/version "871.2.34.1"}
+        com.cognitect.aws/cloudformation {:mvn/version "871.2.35.1"}
+        com.cognitect.aws/ec2 {:mvn/version "871.2.34.6"}
         com.cognitect.aws/ecr {:mvn/version "871.2.32.10"}
-        com.cognitect.aws/endpoints {:mvn/version "871.2.34.1"}
+        com.cognitect.aws/endpoints {:mvn/version "871.2.35.1"}
         com.cognitect.aws/route53 {:mvn/version "871.2.33.5"}
         com.cognitect.aws/s3 {:mvn/version "871.2.33.5"}
-        com.cognitect.aws/ssm {:mvn/version "871.2.32.5"}
-        com.rpl/specter {:mvn/version "1.1.5"}
+        com.cognitect.aws/ssm {:mvn/version "871.2.34.6"}
+        com.rpl/specter {:mvn/version "1.1.6"}
         io.github.clojure/tools.build {:mvn/version "0.10.10"}
         medley/medley {:mvn/version "1.4.0"}
         org.clojure/data.csv {:mvn/version "1.1.0"}
@@ -35,7 +35,7 @@
    :main-opts ["-m" "clj-watson.cli" "scan" "-s" "-p" "deps.edn"]}
   :test
   {:extra-deps
-   {ch.qos.logback/logback-classic {:mvn/version "1.5.18"}
+   {ch.qos.logback/logback-classic {:mvn/version "1.5.19"}
     ; Used by malli.generator/-re-gen
     com.gfredericks/test.chuck {:mvn/version "0.2.15"}
     hashp/hashp {:mvn/version "0.2.2"}
