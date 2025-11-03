@@ -6,8 +6,15 @@
     flake-utils.url = "github:numtide/flake-utils";
   };
 
-  outputs = { self, nixpkgs, flake-utils, ... }@inputs:
-    flake-utils.lib.eachDefaultSystem (system:
+  outputs =
+    {
+      self,
+      nixpkgs,
+      flake-utils,
+      ...
+    }@inputs:
+    flake-utils.lib.eachDefaultSystem (
+      system:
       with import nixpkgs {
         inherit system;
         config.allowUnfree = true;
@@ -26,5 +33,6 @@
             time
           ];
         };
-      });
+      }
+    );
 }
