@@ -29,7 +29,7 @@
             nixfmt
             nodePackages.nodejs
             packer
-            python312Packages.cfn-lint
+            python313Packages.cfn-lint
             rlwrap # Used by clj
             time
           ];
