@@ -1,8 +1,0 @@
-#!/usr/bin/env bash
-
-set -euo pipefail
-
-cd "$(realpath "$(dirname "$0")"/..)"
-
-nix flake update
-./bin/antq --upgrade || true

@@ -25,6 +25,7 @@
             clojure
             git
             jdk
+            just
             neil
             nodePackages.nodejs
             packer
