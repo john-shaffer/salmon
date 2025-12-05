@@ -1,5 +1,7 @@
 ## Unreleased
 
+## v0.31.0 (2025-12-05)
+
 - Remove medley dependency (#3).
 
 ## v0.30.0 (2025-06-19)
