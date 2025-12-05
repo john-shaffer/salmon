@@ -2,7 +2,6 @@
   (:require
    [cognitect.aws.client.api :as aws]
    [donut.system :as-alias ds]
-   [medley.core :as me]
    [salmon.util :as u]))
 
 (defn- parameters-map [params]
@@ -14,13 +13,13 @@
 (defn- get-parameters [client {:keys [with-decryption?]} m]
   (let [kvs (seq m)
         vks (reduce (fn [m [k v]] (assoc m v k)) {} kvs)]
-    (->> (u/invoke! client
-           {:op :GetParameters
-            :request {:Names (mapv val kvs)
-                      :WithDecryption (boolean with-decryption?)}})
+    (-> (u/invoke! client
+          {:op :GetParameters
+           :request {:Names (mapv val kvs)
+                     :WithDecryption (boolean with-decryption?)}})
       :Parameters
       parameters-map
-      (me/map-keys vks))))
+      (update-keys vks))))
 
 (defn- start-parameters-getter!
   [{::ds/keys [config instance]}]

@@ -9,7 +9,6 @@
    [donut.system :as ds]
    [malli.core :as m]
    [malli.error :as merr]
-   [medley.core :as me]
    [salmon.util :as u]
    [salmon.validation :as val])
   (:import
@@ -434,17 +433,17 @@
      :cloudformation-client cloudformation-client
      :describe-stack-raw describe-r
      :name stack-name
-     :outputs (me/map-vals :OutputValue outputs-raw)
+     :outputs (update-vals outputs-raw :OutputValue)
      :outputs-raw outputs-raw
-     :parameters (me/map-vals :ParameterValue parameters-raw)
+     :parameters (update-vals parameters-raw :ParameterValue)
      :parameters-raw parameters-raw
      :region (stack-id->region stack-id)
      :resources resources-map
-     :resource-ids (me/map-vals :PhysicalResourceId resources-map)
+     :resource-ids (update-vals resources-map :PhysicalResourceId)
      :stack-id stack-id
      :status (:StackStatus describe-r)
      :tags-raw tags-raw
-     :tags (me/map-vals :Value tags-raw)}))
+     :tags (update-vals tags-raw :Value)}))
 
 (defn- start-stack! [signal]
   (let [signal (update signal ::ds/config normalize-config)
