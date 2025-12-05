@@ -26,7 +26,6 @@
             git
             jdk
             just
-            neil
             nodePackages.nodejs
             packer
             python312Packages.cfn-lint
