@@ -1,7 +1,6 @@
 (ns salmon.ec2
   (:require
    [clojure.core.cache.wrapped :as cache]
-   [medley.core :as me]
    [salmon.util :as u]))
 
 (defn- list-self-images [client]
@@ -24,7 +23,7 @@
   (loop [cached (reduce #(assoc % %2 (cache/lookup cache %2))
                   {}
                   volume-ids)
-         misses (me/filter-vals nil? cached)]
+         misses (u/filter-vals nil? cached)]
     (if (seq misses)
       (let [; This is only used by find-orphaned-snapshots and
             ; shouldn't ever be paginated, but handle NextToken
@@ -56,7 +55,7 @@
           (cache/miss cache volume-id true))
         (when not-found
           (cache/miss cache not-found false))
-        (recur new-cached (me/filter-vals nil? new-cached)))
+        (recur new-cached (u/filter-vals nil? new-cached)))
       cached)))
 
 (defn list-orphaned-snapshots

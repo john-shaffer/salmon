@@ -5,7 +5,6 @@
    The resource definitions are documented at
    https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-certificatemanager-certificate.html"
   (:require
-   [medley.core :as me]
    [salmon.util :as u]))
 
 (defn dns-validated
@@ -37,5 +36,5 @@
           :SubjectAlternativeNames subject-alternative-names
           :Tags (u/tags tags)
           :ValidationMethod "DNS"}
-         (me/remove-vals nil?))
+      (u/remove-vals nil?))
     opts))

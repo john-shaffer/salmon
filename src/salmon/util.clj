@@ -1,7 +1,6 @@
 (ns salmon.util
   (:require
-   [cognitect.aws.client.api :as aws]
-   [medley.core :as me])
+   [cognitect.aws.client.api :as aws])
   (:import
    (java.util Base64)))
 
@@ -40,6 +39,9 @@
       (str "Anomaly during invoke: " (or msg (aws-error-code result)))
       (merge {:message msg :result result} extra-ex-data))))
 
+(defn filter-vals [pred m]
+  (into {} (filter (comp pred val) m)))
+
 (defn invoke!
   "Calls the AWS API and returns a response, or throws an [[ex-info]]
    if the operation fails.
@@ -75,6 +77,9 @@
       (if (simple-ident? x)
         (name x)
         (str (namespace x) "/" (name x))))))
+
+(defn remove-vals [pred m]
+  (filter-vals (complement pred) m))
 
 (defn tags
   "Returns a vector representing a list of CloudFormation tag
@@ -114,7 +119,7 @@
         :DeletionPolicy deletion-policy
         :DependsOn depends-on
         :Metadata metadata
-        :Properties (me/remove-vals nil? properties)
+        :Properties (remove-vals nil? properties)
         :UpdatePolicy update-policy
         :UpdateReplacePolicy update-replace-policy}
-       (me/remove-vals nil?)))
+    (remove-vals nil?)))
