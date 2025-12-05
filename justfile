@@ -10,6 +10,7 @@ list:
 
 format:
     just --fmt --unstable
+    nixfmt flake.nix
     npx --no @chrisoakman/standard-clojure-style fix
 
 # Update dependencies

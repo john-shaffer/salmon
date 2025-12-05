@@ -26,6 +26,7 @@
             git
             jdk
             just
+            nixfmt
             nodePackages.nodejs
             packer
             python312Packages.cfn-lint
