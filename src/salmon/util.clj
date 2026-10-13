@@ -1,7 +1,9 @@
 (ns salmon.util
   (:require
-   [cognitect.aws.client.api :as aws])
+   [cognitect.aws.client.api :as aws]
+   [cognitect.aws.retry :as retry])
   (:import
+   (java.io IOException)
    (java.util Base64)))
 
 (defn anomaly?
@@ -9,6 +11,33 @@
    indicates an anomalous condition, such as an error."
   [response]
   (boolean (:cognitect.anomalies/category response)))
+
+(defn- io-exception? [t]
+  (->> (iterate ex-cause t)
+    (take-while some?)
+    (some #(instance? IOException %))
+    boolean))
+
+(defn retriable?
+  "Returns true when an AWS API response (from cognitect.aws.client.api)
+   is an anomaly that is safe and useful to retry.
+
+   This includes everything [[cognitect.aws.retry/default-retriable?]]
+   retries, plus faults caused by an IOException. aws-api reports all
+   I/O errors as faults, including the common case where a request is
+   sent on a pooled connection that the server already closed.
+   The official AWS SDKs retry these errors."
+  [response]
+  (boolean
+    (or (retry/default-retriable? response)
+      (and (= :cognitect.anomalies/fault (:cognitect.anomalies/category response))
+        (io-exception? (:cognitect.aws/throwable response))))))
+
+(defn client
+  "Returns an AWS client, like [[cognitect.aws.client.api/client]],
+   but defaults `:retriable?` to [[retriable?]]."
+  [opts]
+  (aws/client (merge {:retriable? retriable?} opts)))
 
 (defn aws-error-code
   "Returns the error code, if present, of an AWS API response."

@@ -1,5 +1,11 @@
 ## Unreleased
 
+- Add `salmon.util/retriable?`, which also retries faults caused by
+  an IOException, such as a request sent on a connection that AWS
+  already closed. aws-api's default doesn't retry these.
+- Add `salmon.util/client`, which creates an AWS client that uses
+  `salmon.util/retriable?` by default.
+
 ## v0.31.0 (2025-12-05)
 
 - Remove medley dependency (#3).
