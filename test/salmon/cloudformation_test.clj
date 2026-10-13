@@ -2,6 +2,7 @@
   (:require [clojure.test :refer [deftest is testing]]
             [donut.system :as ds]
             [salmon.cloudformation :as cfn]
+            [salmon.fake-http :as fake]
             [salmon.test :as test]
             [salmon.util :as u])
   (:import (clojure.lang ExceptionInfo)
@@ -898,3 +899,16 @@
                   (:stack-id stack)))
             (is (= "CREATE_COMPLETE"
                   (-> stack :resources :OAI1 :ResourceStatus)))))))))
+
+(deftest test-stack-properties-retries-io-faults
+  (testing "Clients created from :aws-client-opts retry I/O faults"
+    (let [[http-client requests] (fake/http-client
+                                   [(fake/io-fault)
+                                    (fake/stack-does-not-exist-response "x")])
+          {::ds/keys [start]} (cfn/stack-properties)
+          instance (start {::ds/config
+                           {:aws-client-opts (assoc fake/client-opts :http-client http-client)
+                            :name "x"
+                            :throw-on-missing? false}})]
+      (is (:cloudformation-client instance))
+      (is (= 2 @requests)))))

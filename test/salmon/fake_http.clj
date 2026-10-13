@@ -21,10 +21,19 @@
    (CompletionException.
      (IOException. "HTTP/1.1 header parser received no bytes"))})
 
-(defn xml-response [^String body]
-  {:body (ByteBuffer/wrap (.getBytes body StandardCharsets/UTF_8))
-   :headers {"content-type" "text/xml"}
-   :status 200})
+(defn xml-response
+  ([body]
+   (xml-response 200 body))
+  ([status ^String body]
+   {:body (ByteBuffer/wrap (.getBytes body StandardCharsets/UTF_8))
+    :headers {"content-type" "text/xml"}
+    :status status}))
+
+(defn stack-does-not-exist-response [stack-name]
+  (xml-response 400
+    (str "<ErrorResponse><Error><Type>Sender</Type><Code>ValidationError</Code>"
+      "<Message>Stack with id " stack-name " does not exist</Message>"
+      "</Error><RequestId>1</RequestId></ErrorResponse>")))
 
 (defn http-client
   "Returns [client requests]. client returns each of responses in

@@ -1,6 +1,5 @@
 (ns salmon.ssm
   (:require
-   [cognitect.aws.client.api :as aws]
    [donut.system :as-alias ds]
    [salmon.util :as u]))
 
@@ -26,7 +25,7 @@
   (or instance
     (let [{:as config :keys [client parameters region]}
           #__ (merge {:with-decryption? true} config)
-          client (or client (aws/client {:api :ssm :region region}))]
+          client (or client (u/client {:api :ssm :region region}))]
       {:client client
        :parameters (get-parameters client config parameters)})))
 

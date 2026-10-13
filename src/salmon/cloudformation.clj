@@ -53,7 +53,7 @@
   (assoc config
     :cloudformation-client
     (or (:cloudformation-client config)
-      (-> config :aws-client-opts (assoc :api :cloudformation) aws/client))))
+      (-> config :aws-client-opts (assoc :api :cloudformation) u/client))))
 
 (defn- cfn-lint! [{:keys [region regions]} template]
   (fs/with-temp-dir [dir {:prefix "salmon-cloudformation"}]
@@ -506,7 +506,7 @@
    config options:
 
    :aws-client-opts
-   A map of options to pass to [[cognitect.aws.client.api/client]].
+   A map of options to pass to [[salmon.util/client]].
    Only used when `:cloudformation-client` is not provided.
 
    :capabilities
@@ -642,7 +642,7 @@
    config options:
 
    :aws-client-opts
-   A map of options to pass to [[cognitect.aws.client.api/client]].
+   A map of options to pass to [[salmon.util/client]].
    Only used when `:cloudformation-client` is not provided.
 
    :cloudformation-client
@@ -792,7 +792,7 @@
    config options:
 
    :aws-client-opts
-   A map of options to pass to [[cognitect.aws.client.api/client]].
+   A map of options to pass to [[salmon.util/client]].
    Only used when `:cloudformation-client` is not provided.
 
    :capabilities

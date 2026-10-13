@@ -88,11 +88,11 @@
   (if confirm?
     (doseq [region regions]
       (log/info "Deleting all CloudFormation stacks in" region)
-      (delete-stacks! (aws/client {:api :cloudformation :region region})))
+      (delete-stacks! (u/client {:api :cloudformation :region region})))
     (log/error "delete-all-stacks! called without :confirm?. Doing nothing.")))
 
 (defn- full-delete-bucket! [bucket-name region]
-  (let [s3 (aws/client {:api :s3 :region region})]
+  (let [s3 (u/client {:api :s3 :region region})]
     (try
       (doseq [{:keys [Contents]}
               #__ (u/pages-seq s3
@@ -166,7 +166,7 @@
   (if confirm?
     (doseq [region regions]
       (log/info "Deleting all CloudFormation stacks in" region)
-      (full-delete-stacks! (aws/client {:api :cloudformation :region region}) region))
+      (full-delete-stacks! (u/client {:api :cloudformation :region region}) region))
     (log/error "full-delete-all-stacks! called without :confirm?. Doing nothing.")))
 
 (defn- deregister-amis! [client]
@@ -198,7 +198,7 @@
   (if confirm?
     (doseq [region regions]
       (log/info "Deregistering all AMIs in" region)
-      (deregister-amis! (aws/client {:api :ec2 :region region})))
+      (deregister-amis! (u/client {:api :ec2 :region region})))
     (log/error "deregister-all-amis! called without :confirm?. Doing nothing.")))
 
 (defn- delete-snapshots! [client]
@@ -219,5 +219,5 @@
   (if confirm?
     (doseq [region regions]
       (log/info "Deleting all orphaned snapshots in" region)
-      (delete-snapshots! (aws/client {:api :ec2 :region region})))
+      (delete-snapshots! (u/client {:api :ec2 :region region})))
     (log/error "delete-orphaned-snapshots! called without :confirm?. Doing nothing.")))

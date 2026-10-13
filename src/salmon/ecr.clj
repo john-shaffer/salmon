@@ -1,7 +1,6 @@
 (ns salmon.ecr
   (:require
    [clojure.string :as str]
-   [cognitect.aws.client.api :as aws]
    [donut.system :as ds]
    [salmon.docker :as docker]
    [salmon.util :as u]
@@ -30,7 +29,7 @@
    :ecr-client
    (se/call
      (fn [opts]
-       {:client (aws/client (assoc opts :api (or ecr-api :ecr)))})
+       {:client (u/client (assoc opts :api (or ecr-api :ecr)))})
      aws-client-opts)
    :login
    (se/call docker/login!

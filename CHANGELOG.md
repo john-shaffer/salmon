@@ -5,6 +5,8 @@
   already closed. aws-api's default doesn't retry these.
 - Add `salmon.util/client`, which creates an AWS client that uses
   `salmon.util/retriable?` by default.
+- Create all internally created AWS clients with `salmon.util/client`,
+  so that clients retry I/O faults automatically.
 
 ## v0.31.0 (2025-12-05)
 
