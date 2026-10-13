@@ -7,6 +7,8 @@
   `salmon.util/retriable?` by default.
 - Create all internally created AWS clients with `salmon.util/client`,
   so that clients retry I/O faults automatically.
+- Always retry I/O faults when polling CloudFormation stack and
+  change set status.
 
 ## v0.31.0 (2025-12-05)
 

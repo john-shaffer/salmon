@@ -1,5 +1,6 @@
 (ns salmon.cloudformation-test
   (:require [clojure.test :refer [deftest is testing]]
+            [cognitect.aws.client.api :as aws]
             [donut.system :as ds]
             [salmon.cloudformation :as cfn]
             [salmon.fake-http :as fake]
@@ -911,4 +912,33 @@
                             :name "x"
                             :throw-on-missing? false}})]
       (is (:cloudformation-client instance))
+      (is (= 2 @requests)))))
+
+(defn- plain-client
+  "Returns [client requests], where client is created with aws/client
+   and so doesn't have salmon's :retriable? default."
+  [responses]
+  (let [[http-client requests] (fake/http-client responses)]
+    [(aws/client (assoc fake/client-opts :api :cloudformation :http-client http-client))
+     requests]))
+
+(deftest test-polling-retries-io-faults
+  (testing "wait-until-complete! retries I/O faults with any client"
+    (let [[client requests] (plain-client
+                              [(fake/io-fault)
+                               (fake/describe-stacks-response "x" "CREATE_COMPLETE")])]
+      (is (= "CREATE_COMPLETE" (#'cfn/wait-until-complete! "x" client)))
+      (is (= 2 @requests))))
+  (testing "wait-until-creation-complete! retries I/O faults with any client"
+    (let [[client requests] (plain-client
+                              [(fake/io-fault)
+                               (fake/describe-stacks-response "x" "CREATE_COMPLETE")])]
+      (is (true? (#'cfn/wait-until-creation-complete! {::ds/config {:name "x"}} client)))
+      (is (= 2 @requests))))
+  (testing "wait-until-complete-change-set! retries I/O faults with any client"
+    (let [[client requests] (plain-client
+                              [(fake/io-fault)
+                               (fake/describe-change-set-response "CREATE_COMPLETE")])]
+      (is (= "CREATE_COMPLETE"
+            (:Status (#'cfn/wait-until-complete-change-set! "cs" "x" client))))
       (is (= 2 @requests)))))

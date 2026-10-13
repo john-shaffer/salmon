@@ -54,3 +54,17 @@
                            {:access-key-id "AKIDEXAMPLE"
                             :secret-access-key "secret"})
    :region "us-east-1"})
+
+(defn describe-change-set-response [status]
+  (xml-response
+    (str "<DescribeChangeSetResponse><DescribeChangeSetResult>"
+      "<Status>" status "</Status>"
+      "</DescribeChangeSetResult></DescribeChangeSetResponse>")))
+
+(defn describe-stacks-response [stack-name status]
+  (xml-response
+    (str "<DescribeStacksResponse><DescribeStacksResult><Stacks><member>"
+      "<CreationTime>2026-01-01T00:00:00Z</CreationTime>"
+      "<StackName>" stack-name "</StackName>"
+      "<StackStatus>" status "</StackStatus>"
+      "</member></Stacks></DescribeStacksResult></DescribeStacksResponse>")))

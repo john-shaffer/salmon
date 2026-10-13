@@ -263,7 +263,8 @@
   (loop []
     (let [r (aws/invoke cloudformation-client
               {:op :DescribeStacks
-               :request {:StackName stack-name}})
+               :request {:StackName stack-name}
+               :retriable? u/retriable?})
           status (-> r :Stacks first :StackStatus)]
       (cond
         (u/anomaly? r)
@@ -587,7 +588,8 @@
    cloudformation-client]
   (let [r (aws/invoke cloudformation-client
             {:op :DescribeStacks
-             :request {:StackName name}})
+             :request {:StackName name}
+             :retriable? u/retriable?})
         status (-> r :Stacks first :StackStatus)]
     (cond
       (u/anomaly? r)
@@ -682,7 +684,8 @@
                 {:op :DescribeChangeSet
                  :request
                  {:ChangeSetName change-set-name
-                  :StackName stack-name}})]
+                  :StackName stack-name}
+                 :retriable? u/retriable?})]
       (cond
         (and (not fail-on-no-changes?)
           (= "FAILED" Status)
