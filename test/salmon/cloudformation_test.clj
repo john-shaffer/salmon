@@ -1,5 +1,7 @@
 (ns salmon.cloudformation-test
-  (:require [clojure.string :as str]
+  (:require [clojure.data.json :as json]
+            [clojure.java.shell :as sh]
+            [clojure.string :as str]
             [clojure.test :refer [deftest is testing]]
             [cognitect.aws.client.api :as aws]
             [donut.system :as ds]
@@ -234,6 +236,34 @@
       "cfn-lint checks parameter constraints when every parameter is known")
     (is (nil? (lint-error template {:Priority "20" :TargetGroupArn (ds/ref [:services :T])}))
       "E2900 is skipped when a parameter is left out, since it would require that parameter")))
+
+(defn- cfn-lint-args
+  "Calls cfn-lint! and returns [result args], where args are the
+   command-line arguments that it passed to cfn-lint."
+  [config template parameters]
+  (let [args (atom nil)
+        sh sh/sh]
+    (with-redefs [sh/sh (fn [& xs] (reset! args xs) (apply sh xs))]
+      [(#'cfn/cfn-lint! config template parameters) @args])))
+
+(deftest test-cfn-lint-parameter-secrecy
+  (let [string-keyed (json/write-str
+                       (-> listener-rule-template
+                         (assoc-in [:Parameters :Priority :NoEcho] "true")
+                         (update-keys name)))
+        [result args] (cfn-lint-args {} string-keyed
+                        {:ListenerArn "arn-value" :Priority "50010" :TargetGroupArn "tg-value"})]
+    (testing "parameter values aren't passed on the command line"
+      (is (some #{"--parameter-files"} args))
+      (is (not-any? #(str/includes? % "arn-value") args))
+      (is (not-any? #(str/includes? % "tg-value") args)))
+    (testing "NoEcho is found in the template text, even with string keys"
+      (is (nil? result) "the NoEcho value isn't linted")))
+  (testing "templates that aren't JSON, like YAML from a :template-url, get no parameter values"
+    (let [yaml (str "Parameters:\n  Secret:\n    Type: String\n    NoEcho: true\n"
+                 "Resources:\n  Topic:\n    Type: AWS::SNS::Topic\n")
+          [_ args] (cfn-lint-args {} yaml {:Secret "hunter2"})]
+      (is (not-any? #{"--parameters" "--parameter-files"} args)))))
 
 (deftest test-early-validation-linting
   (testing "cfn-lint works in :early-validate when there are no refs in the template"

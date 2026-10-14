@@ -55,21 +55,49 @@
     (or (:cloudformation-client config)
       (-> config :aws-client-opts (assoc :api :cloudformation) u/client))))
 
-(defn- omits-required-parameters?
-  "Returns true if parameters leaves out any of the template's
-   parameters that don't have a Default."
-  [^String template parameters]
-  (let [given (into #{} (map (comp full-name key)) parameters)]
-    (->> (get (json/read-str template) "Parameters")
-      (some (fn [[k v]]
-              (and (not (contains? v "Default"))
-                (not (given k)))))
-      boolean)))
+(defn- template-parameters
+  "Returns the Parameters section of a JSON template, with string keys,
+   or nil if the template isn't JSON (such as YAML from a template URL)."
+  [^String template]
+  (let [data (try (json/read-str template) (catch Exception _ nil))]
+    (when (map? data)
+      (or (get data "Parameters") {}))))
+
+(defn- lint-parameters
+  "Returns the parameters that are safe to give cfn-lint, keyed by name,
+   and whether any parameter without a Default was left out.
+   NoEcho values are left out, since cfn-lint includes resolved values in
+   its messages. Without a JSON template, NoEcho can't be checked, so no
+   parameters are given."
+  [template parameters]
+  (if-let [template-params (template-parameters template)]
+    (let [no-echo? #(contains? #{true "true"} (get-in template-params [% "NoEcho"]))
+          given (into {}
+                  (keep (fn [[k v]]
+                          (let [k (full-name k)]
+                            (when-not (no-echo? k) [k (str v)]))))
+                  parameters)]
+      {:omits-required? (boolean
+                          (some (fn [[k v]]
+                                  (and (not (contains? v "Default"))
+                                    (not (contains? given k))))
+                            template-params))
+       :parameters given})
+    {:parameters {}}))
 
 (defn- cfn-lint! [{:keys [region regions]} template parameters]
+  ; The temp dir and the parameter file are readable only by their owner
   (fs/with-temp-dir [dir {:prefix "salmon-cloudformation"}]
-    (let [f (fs/create-file (fs/path dir "cloudformation.template"))]
+    (let [f (fs/create-file (fs/path dir "cloudformation.template"))
+          {:keys [omits-required? parameters]} (lint-parameters template parameters)
+          parameter-file (fs/path dir "parameters.json")]
       (spit (fs/file f) template)
+      (when (seq parameters)
+        (fs/create-file parameter-file {:posix-file-permissions "rw-------"})
+        (spit (fs/file parameter-file)
+          (json/write-str
+            (for [[k v] parameters]
+              {:ParameterKey k :ParameterValue v}))))
       (let [regions (or regions (when region [region]))
             {:keys [err exit out]}
             #__ (apply sh/sh
@@ -81,16 +109,15 @@
                       (cons "-r"
                         (map name regions)))
                     ; Lets cfn-lint check values against the properties
-                    ; that they're passed to, such as a maximum
+                    ; that they're passed to, such as a maximum.
+                    ; A file keeps the values out of the process list.
                     (when (seq parameters)
-                      (cons "--parameters"
-                        (map (fn [[k v]] (str (full-name k) "=" v)) parameters)))
+                      ["--parameter-files" (str parameter-file)])
                     ; E2900 requires every parameter without a Default.
                     ; NoEcho and unresolved parameters are left out on
                     ; purpose, and CloudFormation checks parameters itself
                     ; before it changes anything.
-                    (when (and (seq parameters)
-                            (omits-required-parameters? template parameters))
+                    (when (and (seq parameters) omits-required?)
                       ["--ignore-checks" "E2900"])))]
         (cond
           (zero? exit) nil
@@ -171,17 +198,6 @@
     [:or ds/DonutRef
      [:map]]]])
 
-(defn- no-echo-parameter-names
-  "Returns the names of a template's NoEcho parameters, whose values
-   shouldn't be passed to cfn-lint or appear in its output."
-  [template]
-  (let [template (:template template template)]
-    (into #{}
-      (keep (fn [[k {:keys [NoEcho]}]]
-              (when (contains? #{true "true"} NoEcho)
-                (full-name k))))
-      (when (map? template) (:Parameters template)))))
-
 (defn- validate!
   [{:as signal ::ds/keys [component-id system]}
    & {:keys [pre?]}]
@@ -193,10 +209,7 @@
         errors (and schema (m/explain schema config))
         {:keys [change-set lint? parameters template template-url]} config
         resolved-template (val/resolve-refs system component-id template)
-        no-echo (no-echo-parameter-names resolved-template)
         resolved-parameters (->> parameters
-                              (remove (comp no-echo full-name key))
-                              (into {})
                               (u/filter-vals #(val/refs-resolveable? system component-id %))
                               (val/resolve-refs system component-id))]
     (cond
