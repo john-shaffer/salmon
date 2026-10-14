@@ -97,18 +97,10 @@
     {:parameters {}}))
 
 (defn- cfn-lint! [{:keys [region regions]} template parameters]
-  ; The temp dir and the parameter file are readable only by their owner
   (fs/with-temp-dir [dir {:prefix "salmon-cloudformation"}]
     (let [f (fs/create-file (fs/path dir "cloudformation.template"))
-          {:keys [omits-required? parameters]} (lint-parameters template parameters)
-          parameter-file (fs/path dir "parameters.json")]
+          {:keys [omits-required? parameters]} (lint-parameters template parameters)]
       (spit (fs/file f) template)
-      (when (seq parameters)
-        (fs/create-file parameter-file {:posix-file-permissions "rw-------"})
-        (spit (fs/file parameter-file)
-          (json/write-str
-            (for [[k v] parameters]
-              {:ParameterKey k :ParameterValue v}))))
       (let [regions (or regions (when region [region]))
             {:keys [err exit out]}
             #__ (apply sh/sh
@@ -121,15 +113,21 @@
                         (map name regions)))
                     ; Lets cfn-lint check values against the properties
                     ; that they're passed to, such as a maximum.
-                    ; A file keeps the values out of the process list.
+                    ; Piping them through stdin keeps the values out of
+                    ; the process list and off the disk.
                     (when (seq parameters)
-                      ["--parameter-files" (str parameter-file)])
+                      ["--parameter-files" "/dev/stdin"])
                     ; E2900 requires every parameter without a Default.
                     ; NoEcho and unresolved parameters are left out on
                     ; purpose, and CloudFormation checks parameters itself
                     ; before it changes anything.
                     (when (and (seq parameters) omits-required?)
-                      ["--ignore-checks" "E2900"])))]
+                      ["--ignore-checks" "E2900"])
+                    ; sh options must come after all of the arguments
+                    (when (seq parameters)
+                      [:in (json/write-str
+                             (for [[k v] parameters]
+                               {:ParameterKey k :ParameterValue v}))])))]
         (cond
           (zero? exit) nil
           (empty? err) out

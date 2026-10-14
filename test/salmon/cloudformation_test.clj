@@ -238,19 +238,18 @@
       "E2900 is skipped when a parameter is left out, since it would require that parameter")))
 
 (defn- cfn-lint-args
-  "Calls cfn-lint! and returns [result args parameter-file], where args
-   are the command-line arguments that it passed to cfn-lint, and
-   parameter-file is the parsed contents of its --parameter-files file."
+  "Calls cfn-lint! and returns [result args parameters], where args are
+   the command-line arguments that it passed to cfn-lint (not sh's
+   options), and parameters is the parsed parameter file that it piped
+   to cfn-lint's stdin."
   [config template parameters]
   (let [args (atom nil)
-        parameter-file (atom nil)
         sh sh/sh]
-    (with-redefs [sh/sh (fn [& xs]
-                          (reset! args xs)
-                          (when-let [f (second (drop-while #(not= "--parameter-files" %) xs))]
-                            (reset! parameter-file (json/read-str (slurp f) :key-fn keyword)))
-                          (apply sh xs))]
-      [(#'cfn/cfn-lint! config template parameters) @args @parameter-file])))
+    (with-redefs [sh/sh (fn [& xs] (reset! args xs) (apply sh xs))]
+      (let [result (#'cfn/cfn-lint! config template parameters)
+            [argv opts] (split-with string? @args)
+            in (:in (apply hash-map opts))]
+        [result argv (some-> in (json/read-str :key-fn keyword))]))))
 
 (deftest test-cfn-lint-parameter-secrecy
   (let [string-keyed (json/write-str
@@ -259,8 +258,8 @@
                          (update-keys name)))
         [result args] (cfn-lint-args {} string-keyed
                         {:ListenerArn "arn-value" :Priority "50010" :TargetGroupArn "tg-value"})]
-    (testing "parameter values aren't passed on the command line"
-      (is (some #{"--parameter-files"} args))
+    (testing "parameter values aren't passed on the command line or written to disk"
+      (is (= "/dev/stdin" (second (drop-while #(not= "--parameter-files" %) args))))
       (is (not-any? #(str/includes? % "arn-value") args))
       (is (not-any? #(str/includes? % "tg-value") args)))
     (testing "NoEcho is found in the template text, even with string keys"
