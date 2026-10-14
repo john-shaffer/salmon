@@ -1,5 +1,7 @@
 ## Unreleased
 
+## v0.32.0 (2026-10-14)
+
 - Add `salmon.util/retriable?`, which also retries faults caused by
   an IOException, such as a request sent on a connection that AWS
   already closed. aws-api's default doesn't retry these. It also
