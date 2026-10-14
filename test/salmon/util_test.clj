@@ -19,6 +19,14 @@
     (is (true? (u/retriable? (fake/io-fault))))
     (is (true? (u/retriable? {:cognitect.anomalies/category :cognitect.anomalies/fault
                               :cognitect.aws/throwable (IOException. "EOF")}))))
+  (testing "Retries requests whose signature expired before AWS received them"
+    (is (true? (u/retriable? {:cognitect.anomalies/category :cognitect.anomalies/forbidden
+                              :ErrorResponse {:Error {:Code "SignatureDoesNotMatch"
+                                                      :Message "Signature expired: 20261014T143316Z is now earlier than 20261014T144457Z (20261014T144957Z - 5 min.)"}}}))))
+  (testing "Doesn't retry other signature errors"
+    (is (false? (u/retriable? {:cognitect.anomalies/category :cognitect.anomalies/forbidden
+                               :ErrorResponse {:Error {:Code "SignatureDoesNotMatch"
+                                                       :Message "The request signature we calculated does not match the signature you provided."}}}))))
   (testing "Doesn't retry other faults"
     (is (false? (u/retriable? {:cognitect.anomalies/category :cognitect.anomalies/fault})))
     (is (false? (u/retriable? {:cognitect.anomalies/category :cognitect.anomalies/fault
@@ -31,6 +39,12 @@
 (deftest test-client
   (testing "Retries requests that fail with an IOException"
     (let [[http-client requests] (fake/http-client [(fake/io-fault) describe-stacks-response])
+          client (u/client (assoc fake/client-opts :api :cloudformation :http-client http-client))
+          r (aws/invoke client {:op :DescribeStacks})]
+      (is (not (u/anomaly? r)))
+      (is (= 2 @requests))))
+  (testing "Retries requests whose signature expired"
+    (let [[http-client requests] (fake/http-client [(fake/signature-expired-response) describe-stacks-response])
           client (u/client (assoc fake/client-opts :api :cloudformation :http-client http-client))
           r (aws/invoke client {:op :DescribeStacks})]
       (is (not (u/anomaly? r)))

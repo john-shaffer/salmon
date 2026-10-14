@@ -35,6 +35,16 @@
       "<Message>Stack with id " stack-name " does not exist</Message>"
       "</Error><RequestId>1</RequestId></ErrorResponse>")))
 
+(defn signature-expired-response
+  "Returns the response AWS sends when a request arrives more than
+   5 minutes after it was signed."
+  []
+  (xml-response 403
+    (str "<ErrorResponse><Error><Type>Sender</Type><Code>SignatureDoesNotMatch</Code>"
+      "<Message>Signature expired: 20261014T143316Z is now earlier than 20261014T144457Z"
+      " (20261014T144957Z - 5 min.)</Message>"
+      "</Error><RequestId>1</RequestId></ErrorResponse>")))
+
 (defn http-client
   "Returns [client requests]. client returns each of responses in
    order, and then repeats the last one. A response of :no-response

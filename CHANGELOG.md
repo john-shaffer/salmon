@@ -2,7 +2,8 @@
 
 - Add `salmon.util/retriable?`, which also retries faults caused by
   an IOException, such as a request sent on a connection that AWS
-  already closed. aws-api's default doesn't retry these.
+  already closed. aws-api's default doesn't retry these. It also
+  retries requests when the signature has expired.
 - Add `salmon.util/client`, which creates an AWS client that uses
   `salmon.util/retriable?` by default.
 - Create all internally created AWS clients with `salmon.util/client`,

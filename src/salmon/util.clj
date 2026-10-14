@@ -1,6 +1,7 @@
 (ns salmon.util
   (:require
    [clojure.core.async :as a]
+   [clojure.string :as str]
    [cognitect.aws.client.api :as aws]
    [cognitect.aws.retry :as retry])
   (:import
@@ -43,12 +44,18 @@
    retries, plus faults caused by an IOException. aws-api reports all
    I/O errors as faults, including the common case where a request is
    sent on a pooled connection that the server already closed.
-   The official AWS SDKs retry these errors."
+   The official AWS SDKs retry these errors.
+
+   Also retries requests that AWS rejected because they arrived more
+   than 5 minutes after they were signed, such as after a stalled
+   connection. aws-api signs each retry again."
   [response]
   (boolean
     (or (retry/default-retriable? response)
       (and (= :cognitect.anomalies/fault (:cognitect.anomalies/category response))
-        (io-exception? (:cognitect.aws/throwable response))))))
+        (io-exception? (:cognitect.aws/throwable response)))
+      (and (= "SignatureDoesNotMatch" (aws-error-code response))
+        (some-> (aws-error-message response) (str/starts-with? "Signature expired"))))))
 
 (defn client
   "Returns an AWS client, like [[cognitect.aws.client.api/client]],
