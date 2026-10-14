@@ -1,5 +1,6 @@
 (ns salmon.cloudformation-test
-  (:require [clojure.test :refer [deftest is testing]]
+  (:require [clojure.string :as str]
+            [clojure.test :refer [deftest is testing]]
             [cognitect.aws.client.api :as aws]
             [donut.system :as ds]
             [salmon.cloudformation :as cfn]
@@ -169,6 +170,70 @@
                                  :parameters (assoc params :Priority (ds/ref [:services :T]))
                                  :template listener-rule-template))
             :salmon/early-validate)))))
+
+(def three-rule-template
+  "A template with a listener rule priority for each kind of parameter:
+   one with a known value, one NoEcho, and one with an unresolved ref."
+  (let [rule (fn [priority-param]
+               {:Type "AWS::ElasticLoadBalancingV2::ListenerRule"
+                :Properties
+                {:Actions [{:TargetGroupArn {:Ref "TargetGroupArn"} :Type "forward"}]
+                 :Conditions [{:Field "path-pattern" :PathPatternConfig {:Values ["/*"]}}]
+                 :ListenerArn {:Ref "ListenerArn"}
+                 :Priority {:Ref priority-param}}})]
+    {:Parameters {:Known {:Type "Number"}
+                  :ListenerArn {:Type "String"}
+                  :Secret {:NoEcho true :Type "Number"}
+                  :TargetGroupArn {:Type "String"}
+                  :Unknown {:Type "Number"}}
+     :Resources {:KnownRule (rule "Known")
+                 :SecretRule (rule "Secret")
+                 :UnknownRule (rule "Unknown")}}))
+
+(defn- lint-error
+  "Returns the early-validate error messages, including causes, for a
+   stack with the given template and parameters, or nil if validation
+   passes. :ListenerArn and :TargetGroupArn default to valid values."
+  [template parameters]
+  (try
+    (ds/signal (system-a (stack-a :lint? true
+                           :parameters (merge {:ListenerArn "arn" :TargetGroupArn "arn"}
+                                         parameters)
+                           :template template))
+      :salmon/early-validate)
+    nil
+    (catch ExceptionInfo e
+      (->> (iterate ex-cause e)
+        (take-while some?)
+        (map ex-message)
+        (str/join "\n")))))
+
+(deftest test-linting-parameter-combinations
+  (let [unresolved (ds/ref [:services :T])]
+    (doseq [known ["10" "50010"]
+            secret ["20" "50020"]
+            unknown [nil unresolved]
+            :let [params (cond-> {:Known known :Secret secret}
+                           unknown (assoc :Unknown unknown))
+                  error (lint-error three-rule-template params)
+                  desc (pr-str {:known known :secret secret
+                                :unknown (if unknown :unresolved-ref :absent)})]]
+      (testing desc
+        (if (= "50010" known)
+          (is (and error (str/includes? error "'50010'"))
+            "an invalid known value fails linting")
+          (is (nil? error)
+            "NoEcho and unknown values don't fail linting"))
+        (when error
+          (is (not (str/includes? error (str "'" secret "'")))
+            "a NoEcho value never appears in the error"))))))
+
+(deftest test-linting-parameter-constraints
+  (let [template (assoc-in listener-rule-template [:Parameters :Priority :AllowedValues] ["10"])]
+    (is (str/includes? (str (lint-error template {:Priority "20"})) "E2900 '20' is not one of")
+      "cfn-lint checks parameter constraints when every parameter is known")
+    (is (nil? (lint-error template {:Priority "20" :TargetGroupArn (ds/ref [:services :T])}))
+      "E2900 is skipped when a parameter is left out, since it would require that parameter")))
 
 (deftest test-early-validation-linting
   (testing "cfn-lint works in :early-validate when there are no refs in the template"

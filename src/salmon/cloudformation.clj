@@ -55,6 +55,17 @@
     (or (:cloudformation-client config)
       (-> config :aws-client-opts (assoc :api :cloudformation) u/client))))
 
+(defn- omits-required-parameters?
+  "Returns true if parameters leaves out any of the template's
+   parameters that don't have a Default."
+  [^String template parameters]
+  (let [given (into #{} (map (comp full-name key)) parameters)]
+    (->> (get (json/read-str template) "Parameters")
+      (some (fn [[k v]]
+              (and (not (contains? v "Default"))
+                (not (given k)))))
+      boolean)))
+
 (defn- cfn-lint! [{:keys [region regions]} template parameters]
   (fs/with-temp-dir [dir {:prefix "salmon-cloudformation"}]
     (let [f (fs/create-file (fs/path dir "cloudformation.template"))]
@@ -73,7 +84,14 @@
                     ; that they're passed to, such as a maximum
                     (when (seq parameters)
                       (cons "--parameters"
-                        (map (fn [[k v]] (str (full-name k) "=" v)) parameters)))))]
+                        (map (fn [[k v]] (str (full-name k) "=" v)) parameters)))
+                    ; E2900 requires every parameter without a Default.
+                    ; NoEcho and unresolved parameters are left out on
+                    ; purpose, and CloudFormation checks parameters itself
+                    ; before it changes anything.
+                    (when (and (seq parameters)
+                            (omits-required-parameters? template parameters))
+                      ["--ignore-checks" "E2900"])))]
         (cond
           (zero? exit) nil
           (empty? err) out
