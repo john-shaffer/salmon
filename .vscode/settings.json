@@ -6,10 +6,14 @@
       "autoSelectForJackIn": true,
       "cljsType": "none",
       "menuSelections": {
-        "cljAliases": ["test"]
+        "cljAliases": [
+          "test"
+        ]
       },
       "name": "Salmon",
-      "projectRootPath": ["."],
+      "projectRootPath": [
+        "."
+      ],
       "projectType": "deps.edn"
     }
   ],
