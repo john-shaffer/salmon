@@ -9,6 +9,9 @@
   so that clients retry I/O faults automatically.
 - Always retry I/O faults when polling CloudFormation stack and
   change set status.
+- When `:lint?` is true and all non-default parameters are known,
+  use cfn-lint to validate template parameters.
+  See cfn-lint rule E2900.
 
 ## v0.31.0 (2025-12-05)
 

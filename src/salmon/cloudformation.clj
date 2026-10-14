@@ -55,7 +55,7 @@
     (or (:cloudformation-client config)
       (-> config :aws-client-opts (assoc :api :cloudformation) u/client))))
 
-(defn- cfn-lint! [{:keys [region regions]} template]
+(defn- cfn-lint! [{:keys [region regions]} template parameters]
   (fs/with-temp-dir [dir {:prefix "salmon-cloudformation"}]
     (let [f (fs/create-file (fs/path dir "cloudformation.template"))]
       (spit (fs/file f) template)
@@ -64,10 +64,16 @@
             #__ (apply sh/sh
                   "cfn-lint"
                   (str f)
-                  (when (and (seq regions)
-                          (not (some ds/ref? regions)))
-                    (cons "-r"
-                      (map name regions))))]
+                  (concat
+                    (when (and (seq regions)
+                            (not (some ds/ref? regions)))
+                      (cons "-r"
+                        (map name regions)))
+                    ; Lets cfn-lint check values against the properties
+                    ; that they're passed to, such as a maximum
+                    (when (seq parameters)
+                      (cons "--parameters"
+                        (map (fn [[k v]] (str (full-name k) "=" v)) parameters)))))]
         (cond
           (zero? exit) nil
           (empty? err) out
@@ -76,7 +82,7 @@
 
 (defn- template-data
   [{:as config :keys [template-url]}
-   & {:keys [template validate?]
+   & {:keys [parameters template validate?]
       :or {validate? true}}]
   ; unwrap {:template {}} from the template component
   ; while allowing direct template data specification when not using
@@ -91,7 +97,8 @@
         errors (and validate?
                  (cfn-lint! config
                    (or json
-                     (slurp url))))]
+                     (slurp url))
+                   parameters))]
     (if (and errors (not (str/blank? errors)))
       (throw (ex-info errors template-data))
       template-data)))
@@ -155,8 +162,11 @@
                  (:salmon/early-schema component-def)
                  (:schema component-def))
         errors (and schema (m/explain schema config))
-        {:keys [change-set lint? template template-url]} config
-        resolved-template (val/resolve-refs system component-id template)]
+        {:keys [change-set lint? parameters template template-url]} config
+        resolved-template (val/resolve-refs system component-id template)
+        resolved-parameters (->> parameters
+                              (u/filter-vals #(val/refs-resolveable? system component-id %))
+                              (val/resolve-refs system component-id))]
     (cond
       errors
       (throw
@@ -178,7 +188,9 @@
                {:template resolved-template}))
 
       lint?
-      (let [{:keys [message]} (template-data config :template resolved-template)]
+      (let [{:keys [message]} (template-data config
+                                :parameters resolved-parameters
+                                :template resolved-template)]
         (when (seq message)
           (throw (ex-info (str "Template validation failed: " message)
                    {:message message

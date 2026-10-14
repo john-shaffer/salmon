@@ -131,6 +131,39 @@
             cause))
       "stack is validated when :change-set option is used")))
 
+(def listener-rule-template
+  {:Parameters {:ListenerArn {:Type "String"}
+                :Priority {:Type "Number"}
+                :TargetGroupArn {:Type "String"}}
+   :Resources
+   {:Rule {:Type "AWS::ElasticLoadBalancingV2::ListenerRule"
+           :Properties
+           {:Actions [{:TargetGroupArn {:Ref "TargetGroupArn"} :Type "forward"}]
+            :Conditions [{:Field "path-pattern" :PathPatternConfig {:Values ["/*"]}}]
+            :ListenerArn {:Ref "ListenerArn"}
+            :Priority {:Ref "Priority"}}}}})
+
+(deftest test-linting-parameters
+  (let [params {:ListenerArn "arn" :TargetGroupArn "arn"}]
+    (testing "cfn-lint checks the stack's parameter values"
+      (is (thrown-with-msg?
+            ExceptionInfo
+            #"greater than the maximum of 50000"
+            (cause (ds/signal (system-a (stack-a :lint? true
+                                          :parameters (assoc params :Priority 50010)
+                                          :template listener-rule-template))
+                     :salmon/early-validate)))))
+    (testing "valid parameter values pass"
+      (is (ds/signal (system-a (stack-a :lint? true
+                                 :parameters (assoc params :Priority "49995")
+                                 :template listener-rule-template))
+            :salmon/early-validate)))
+    (testing "parameters with unresolved refs are left out of linting"
+      (is (ds/signal (system-a (stack-a :lint? true
+                                 :parameters (assoc params :Priority (ds/ref [:services :T]))
+                                 :template listener-rule-template))
+            :salmon/early-validate)))))
+
 (deftest test-early-validation-linting
   (testing "cfn-lint works in :early-validate when there are no refs in the template"
     (is (thrown-with-msg?
