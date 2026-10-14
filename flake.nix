@@ -2,7 +2,8 @@
   description = "salmon";
 
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/nixos-25.11";
+    # Latest stable nixpkgs
+    nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0";
     flake-utils.url = "github:numtide/flake-utils";
   };
 
@@ -27,9 +28,9 @@
             jdk
             just
             nixfmt
-            nodePackages.nodejs
+            nodejs
             packer
-            python313Packages.cfn-lint
+            python3Packages.cfn-lint
             rlwrap # Used by clj
             time
           ];
