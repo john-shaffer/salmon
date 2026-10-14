@@ -161,12 +161,15 @@
                                  :parameters (assoc params :Priority "49995")
                                  :template listener-rule-template))
             :salmon/early-validate)))
-    (testing "NoEcho parameters are left out of linting, so their values aren't exposed"
-      (is (ds/signal (system-a (stack-a :lint? true
-                                 :parameters (assoc params :Priority 50010)
-                                 :template (assoc-in listener-rule-template
-                                             [:Parameters :Priority :NoEcho] true)))
-            :salmon/early-validate)))
+    (testing "NoEcho values are linted, and masked in the error"
+      (is (thrown-with-msg?
+            ExceptionInfo
+            #"greater than the maximum of 50000 when 'Ref' is resolved to '\*\*\*\*'"
+            (cause (ds/signal (system-a (stack-a :lint? true
+                                          :parameters (assoc params :Priority 50010)
+                                          :template (assoc-in listener-rule-template
+                                                      [:Parameters :Priority :NoEcho] true)))
+                     :salmon/early-validate)))))
     (testing "parameters with unresolved refs are left out of linting"
       (is (ds/signal (system-a (stack-a :lint? true
                                  :parameters (assoc params :Priority (ds/ref [:services :T]))
@@ -221,11 +224,12 @@
                   desc (pr-str {:known known :secret secret
                                 :unknown (if unknown :unresolved-ref :absent)})]]
       (testing desc
-        (if (= "50010" known)
-          (is (and error (str/includes? error "'50010'"))
-            "an invalid known value fails linting")
-          (is (nil? error)
-            "NoEcho and unknown values don't fail linting"))
+        (is (= (= "50010" known) (boolean (some-> error (str/includes? "'50010'"))))
+          "an invalid known value fails linting and is shown")
+        (is (= (= "50020" secret) (boolean (some-> error (str/includes? "'****'"))))
+          "an invalid NoEcho value fails linting and is masked")
+        (is (= (or (= "50010" known) (= "50020" secret)) (some? error))
+          "unknown values don't fail linting")
         (when error
           (is (not (str/includes? error (str "'" secret "'")))
             "a NoEcho value never appears in the error"))))))
@@ -263,10 +267,22 @@
       (is (not-any? #(str/includes? % "arn-value") args))
       (is (not-any? #(str/includes? % "tg-value") args)))
     (testing "NoEcho is found in the template text, even with string keys"
-      (is (nil? result) "the NoEcho value isn't linted")))
+      (is (str/includes? (str result) "'****'") "the NoEcho value is linted and masked")
+      (is (not (str/includes? (str result) "50010")))))
   (testing "templates that can't be parsed get no parameter values"
     (let [[_ args] (cfn-lint-args {} "Parameters: [unclosed" {:Secret "hunter2"})]
       (is (not-any? #{"--parameters" "--parameter-files"} args)))))
+
+(deftest test-cfn-lint-masks-no-echo-values
+  (let [template (json/write-str
+                   {:Parameters {:S {:AllowedValues ["x"] :NoEcho true :Type "String"}}
+                    :Resources {:Topic {:Type "AWS::SNS::Topic"
+                                        :Properties {:TopicName {:Ref "S"}}}}})]
+    (doseq [v ["hunter2" "it's" "say \"hi\"" "it's \"both\"" "back\\slash"]]
+      (testing (pr-str v)
+        (let [[result] (cfn-lint-args {} template {:S v})]
+          (is (str/includes? (str result) "****") "the invalid value is reported")
+          (is (not (str/includes? (str result) v)) "the value is masked"))))))
 
 (def yaml-template
   (str "Parameters:\n"
@@ -293,8 +309,11 @@
     (testing "YAML templates, including CloudFormation tags, get their parameters linted"
       (is (some #{"--parameter-files"} args))
       (is (str/includes? (str result) "'50010'")))
-    (testing "NoEcho is found in YAML templates"
-      (is (= [{:ParameterKey "Known" :ParameterValue "50010"}] parameter-file))
+    (testing "NoEcho values in YAML templates are linted and masked"
+      (is (= #{{:ParameterKey "Known" :ParameterValue "50010"}
+               {:ParameterKey "Secret" :ParameterValue "50020"}}
+            (set parameter-file)))
+      (is (str/includes? (str result) "'****'"))
       (is (not (str/includes? (str result) "50020"))))))
 
 (deftest test-early-validation-linting

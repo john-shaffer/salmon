@@ -75,20 +75,23 @@
       (or (get data "Parameters") {}))))
 
 (defn- lint-parameters
-  "Returns the parameters that are safe to give cfn-lint, keyed by name,
-   and whether any parameter without a Default was left out.
-   NoEcho values are left out, since cfn-lint includes resolved values in
-   its messages. If the template can't be parsed, NoEcho can't be
-   checked, so no parameters are given."
+  "Returns the parameters to give cfn-lint, keyed by name, the NoEcho
+   values to mask in its output, and whether any parameter without a
+   Default is missing. If the template can't be parsed, NoEcho values
+   can't be found, so no parameters are given."
   [template parameters]
   (if-let [template-params (template-parameters template)]
-    (let [no-echo? #(contains? #{true "true"} (get-in template-params [% "NoEcho"]))
-          given (into {}
-                  (keep (fn [[k v]]
-                          (let [k (full-name k)]
-                            (when-not (no-echo? k) [k (str v)]))))
+    (let [given (into {}
+                  (map (fn [[k v]] [(full-name k) (str v)]))
                   parameters)]
-      {:omits-required? (boolean
+      {:no-echo-values (into #{}
+                         (keep (fn [[k v]]
+                                 (when (and (contains? #{true "true"}
+                                              (get-in template-params [k "NoEcho"]))
+                                         (not (str/blank? v)))
+                                   v)))
+                         given)
+       :omits-required? (boolean
                           (some (fn [[k v]]
                                   (and (not (contains? v "Default"))
                                     (not (contains? given k))))
@@ -96,10 +99,40 @@
        :parameters given})
     {:parameters {}}))
 
+(defn- python-repr
+  "Returns s as Python's repr would show it, which is how cfn-lint
+   shows resolved values in its messages."
+  [^String s]
+  (let [double? (and (str/includes? s "'") (not (str/includes? s "\"")))
+        escaped (-> s
+                  (str/replace "\\" "\\\\")
+                  (str/replace "\n" "\\n")
+                  (str/replace "\r" "\\r")
+                  (str/replace "\t" "\\t"))]
+    (if double?
+      (str "\"" escaped "\"")
+      (str "'" (str/replace escaped "'" "\\'") "'"))))
+
+(defn- mask-values
+  "Replaces each of values in cfn-lint's output with ****, as
+   CloudFormation does for NoEcho parameters. cfn-lint quotes the
+   resolved values that it shows, so only quoted forms are replaced.
+   That avoids mangling unrelated output, like line numbers, when a
+   value is short."
+  [s values]
+  (reduce
+    (fn [s v]
+      (reduce #(str/replace %1 %2 "'****'")
+        s
+        [(python-repr v) (str "'" v "'") (str "\"" v "\"")]))
+    s
+    values))
+
 (defn- cfn-lint! [{:keys [region regions]} template parameters]
   (fs/with-temp-dir [dir {:prefix "salmon-cloudformation"}]
     (let [f (fs/create-file (fs/path dir "cloudformation.template"))
-          {:keys [omits-required? parameters]} (lint-parameters template parameters)]
+          {:keys [no-echo-values omits-required? parameters]}
+          #__ (lint-parameters template parameters)]
       (spit (fs/file f) template)
       (let [regions (or regions (when region [region]))
             {:keys [err exit out]}
@@ -118,9 +151,8 @@
                     (when (seq parameters)
                       ["--parameter-files" "/dev/stdin"])
                     ; E2900 requires every parameter without a Default.
-                    ; NoEcho and unresolved parameters are left out on
-                    ; purpose, and CloudFormation checks parameters itself
-                    ; before it changes anything.
+                    ; If we are doing an early check and haven't resolved
+                    ; all parameters yet, we don't want to require these.
                     (when (and (seq parameters) omits-required?)
                       ["--ignore-checks" "E2900"])
                     ; sh options must come after all of the arguments
@@ -128,11 +160,12 @@
                       [:in (json/write-str
                              (for [[k v] parameters]
                                {:ParameterKey k :ParameterValue v}))])))]
-        (cond
-          (zero? exit) nil
-          (empty? err) out
-          (empty? out) err
-          :else (str err out))))))
+        (some-> (cond
+                  (zero? exit) nil
+                  (empty? err) out
+                  (empty? out) err
+                  :else (str err out))
+          (mask-values no-echo-values))))))
 
 (defn- template-data
   [{:as config :keys [template-url]}
