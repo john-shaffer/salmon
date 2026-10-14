@@ -9,6 +9,12 @@
   so that clients retry I/O faults automatically.
 - Always retry I/O faults when polling CloudFormation stack and
   change set status.
+- Add `salmon.util/invoke-with-timeout`, which sends a request again
+  when an attempt takes longer than a timeout. aws-api's HTTP client
+  has no read timeout, so a request on a stalled connection can
+  otherwise hang indefinitely.
+- Time out CloudFormation stack and change set status checks after
+  30 seconds and send them again, up to 3 attempts.
 - When `:lint?` is true and all non-default parameters are known,
   use cfn-lint to validate template parameters.
   See cfn-lint rule E2900.

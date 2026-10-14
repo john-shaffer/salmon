@@ -37,14 +37,17 @@
 
 (defn http-client
   "Returns [client requests]. client returns each of responses in
-   order, and then repeats the last one. requests is an atom holding
-   the number of requests made."
+   order, and then repeats the last one. A response of :no-response
+   is never returned, like a request that hangs. requests is an atom
+   holding the number of requests made."
   [responses]
   (let [requests (atom 0)]
     [(reify http/HttpClient
        (-submit [_ _request channel]
-         (let [n (swap! requests inc)]
-           (a/put! channel (nth responses (min (dec n) (dec (count responses)))))
+         (let [n (swap! requests inc)
+               response (nth responses (min (dec n) (dec (count responses))))]
+           (when (not= :no-response response)
+             (a/put! channel response))
            channel))
        (-stop [_]))
      requests]))

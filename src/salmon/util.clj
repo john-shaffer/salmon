@@ -1,5 +1,6 @@
 (ns salmon.util
   (:require
+   [clojure.core.async :as a]
    [cognitect.aws.client.api :as aws]
    [cognitect.aws.retry :as retry])
   (:import
@@ -38,6 +39,28 @@
    but defaults `:retriable?` to [[retriable?]]."
   [opts]
   (aws/client (merge {:retriable? retriable?} opts)))
+
+(defn invoke-with-timeout
+  "Like [[cognitect.aws.client.api/invoke]], but sends the request
+   again when an attempt takes longer than `timeout-msec` (default
+   30000), up to 3 attempts in all. Returns an
+   :cognitect.anomalies/interrupted anomaly if every attempt times out.
+
+   aws-api's HTTP client has no read timeout, so a request on a
+   stalled connection can otherwise hang indefinitely. Only use this
+   for requests that are safe to send more than once, such as reads."
+  ([client op-map]
+   (invoke-with-timeout client op-map 30000))
+  ([client op-map timeout-msec]
+   (loop [attempt 1]
+     (let [[r] (a/alts!! [(aws/invoke-async client op-map)
+                          (a/timeout timeout-msec)])]
+       (cond
+         r r
+         (< attempt 3) (recur (inc attempt))
+         :else {:cognitect.anomalies/category :cognitect.anomalies/interrupted
+                :cognitect.anomalies/message
+                (str "Request timed out " attempt " times after " timeout-msec " ms")})))))
 
 (defn aws-error-code
   "Returns the error code, if present, of an AWS API response."

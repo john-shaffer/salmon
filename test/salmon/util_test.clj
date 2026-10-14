@@ -45,6 +45,21 @@
       (is (u/anomaly? r))
       (is (= 1 @requests)))))
 
+(deftest test-invoke-with-timeout
+  (testing "Sends a request again when it times out"
+    (let [[http-client requests] (fake/http-client [:no-response describe-stacks-response])
+          client (u/client (assoc fake/client-opts :api :cloudformation :http-client http-client))
+          ;; Long enough for the first aws-api call in a cold JVM
+          r (u/invoke-with-timeout client {:op :DescribeStacks} 1000)]
+      (is (= {:Stacks []} r))
+      (is (= 2 @requests))))
+  (testing "Returns an anomaly when every attempt times out"
+    (let [[http-client requests] (fake/http-client [:no-response])
+          client (u/client (assoc fake/client-opts :api :cloudformation :http-client http-client))
+          r (u/invoke-with-timeout client {:op :DescribeStacks} 100)]
+      (is (= :cognitect.anomalies/interrupted (:cognitect.anomalies/category r)))
+      (is (= 3 @requests)))))
+
 (deftest test-tags
   (testing "Empty values result in nil"
     (is (= nil (u/tags nil)))

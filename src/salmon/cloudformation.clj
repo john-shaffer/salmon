@@ -360,7 +360,7 @@
     (logr/info "Waiting for stack to enter a COMPLETE, FAILED, or ROLLBACK status" stack-name)
     (logr/info "Waiting for stack to enter a COMPLETE or FAILED status" stack-name))
   (loop []
-    (let [r (aws/invoke cloudformation-client
+    (let [r (u/invoke-with-timeout cloudformation-client
               {:op :DescribeStacks
                :request {:StackName stack-name}
                :retriable? u/retriable?})
@@ -685,7 +685,7 @@
   [{:as signal
     {:keys [name]} ::ds/config}
    cloudformation-client]
-  (let [r (aws/invoke cloudformation-client
+  (let [r (u/invoke-with-timeout cloudformation-client
             {:op :DescribeStacks
              :request {:StackName name}
              :retriable? u/retriable?})
@@ -779,7 +779,7 @@
   (logr/info "Waiting for change set to enter a COMPLETE or FAILED status" stack-name)
   (loop []
     (let [{:as r :keys [Changes Status StatusReason]}
-          #__ (aws/invoke cloudformation-client
+          #__ (u/invoke-with-timeout cloudformation-client
                 {:op :DescribeChangeSet
                  :request
                  {:ChangeSetName change-set-name
