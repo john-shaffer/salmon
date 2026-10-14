@@ -982,18 +982,17 @@
               e))
         {:keys [event-cause name status]} (ex-data e)]
     (testing "Rollback exception includes the source of the failure"
-      (is (re-find #"Bucket failed with reason:.*amazon\.com already exists"
+      (is (re-find #"Bucket failed with reason:.*HandlerErrorCode: AlreadyExists"
             (ex-message e))
         "Error message includes resource error message")
       (is (#{"ROLLBACK_COMPLETE" "ROLLBACK_IN_PROGRESS"} status))
       (is (= stack-name name))
       (is (= {:LogicalResourceId "Bucket"
-              :PhysicalResourceId ""
               :ResourceProperties "{\"BucketName\":\"amazon.com\"}"
               :ResourceStatus "CREATE_FAILED"
               :ResourceType "AWS::S3::Bucket"
               :StackName stack-name}
-            (select-keys event-cause [:LogicalResourceId :PhysicalResourceId :ResourceProperties
+            (select-keys event-cause [:LogicalResourceId :ResourceProperties
                                       :ResourceStatus :ResourceType :StackName]))))))
 
 (deftest test-stack-rollback-state
