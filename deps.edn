@@ -1,6 +1,7 @@
 {:paths ["src"]
  :deps {org.clojure/clojure {:mvn/version "1.12.3"}
         babashka/fs {:mvn/version "0.5.30"}
+        clj-commons/clj-yaml {:mvn/version "1.0.30"}
         com.cognitect.aws/api {:mvn/version "0.8.774"}
         com.cognitect.aws/cloudformation {:mvn/version "871.2.39.3"}
         com.cognitect.aws/ec2 {:mvn/version "871.2.39.6"}

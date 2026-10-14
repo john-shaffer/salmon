@@ -238,13 +238,19 @@
       "E2900 is skipped when a parameter is left out, since it would require that parameter")))
 
 (defn- cfn-lint-args
-  "Calls cfn-lint! and returns [result args], where args are the
-   command-line arguments that it passed to cfn-lint."
+  "Calls cfn-lint! and returns [result args parameter-file], where args
+   are the command-line arguments that it passed to cfn-lint, and
+   parameter-file is the parsed contents of its --parameter-files file."
   [config template parameters]
   (let [args (atom nil)
+        parameter-file (atom nil)
         sh sh/sh]
-    (with-redefs [sh/sh (fn [& xs] (reset! args xs) (apply sh xs))]
-      [(#'cfn/cfn-lint! config template parameters) @args])))
+    (with-redefs [sh/sh (fn [& xs]
+                          (reset! args xs)
+                          (when-let [f (second (drop-while #(not= "--parameter-files" %) xs))]
+                            (reset! parameter-file (json/read-str (slurp f) :key-fn keyword)))
+                          (apply sh xs))]
+      [(#'cfn/cfn-lint! config template parameters) @args @parameter-file])))
 
 (deftest test-cfn-lint-parameter-secrecy
   (let [string-keyed (json/write-str
@@ -259,11 +265,38 @@
       (is (not-any? #(str/includes? % "tg-value") args)))
     (testing "NoEcho is found in the template text, even with string keys"
       (is (nil? result) "the NoEcho value isn't linted")))
-  (testing "templates that aren't JSON, like YAML from a :template-url, get no parameter values"
-    (let [yaml (str "Parameters:\n  Secret:\n    Type: String\n    NoEcho: true\n"
-                 "Resources:\n  Topic:\n    Type: AWS::SNS::Topic\n")
-          [_ args] (cfn-lint-args {} yaml {:Secret "hunter2"})]
+  (testing "templates that can't be parsed get no parameter values"
+    (let [[_ args] (cfn-lint-args {} "Parameters: [unclosed" {:Secret "hunter2"})]
       (is (not-any? #{"--parameters" "--parameter-files"} args)))))
+
+(def yaml-template
+  (str "Parameters:\n"
+    "  Known:\n    Type: Number\n"
+    "  Secret:\n    Type: Number\n    NoEcho: true\n"
+    "Resources:\n"
+    "  KnownRule:\n"
+    "    Type: AWS::ElasticLoadBalancingV2::ListenerRule\n"
+    "    Properties:\n"
+    "      Actions: [{Type: fixed-response, FixedResponseConfig: {StatusCode: '200'}}]\n"
+    "      Conditions: [{Field: path-pattern, PathPatternConfig: {Values: [!Sub '/${Known}']}}]\n"
+    "      ListenerArn: arn:aws:elasticloadbalancing:us-east-1:123456789012:listener/app/a/1/2\n"
+    "      Priority: !Ref Known\n"
+    "  SecretRule:\n"
+    "    Type: AWS::ElasticLoadBalancingV2::ListenerRule\n"
+    "    Properties:\n"
+    "      Actions: [{Type: fixed-response, FixedResponseConfig: {StatusCode: '200'}}]\n"
+    "      Conditions: [{Field: path-pattern, PathPatternConfig: {Values: [/secret]}}]\n"
+    "      ListenerArn: arn:aws:elasticloadbalancing:us-east-1:123456789012:listener/app/a/1/2\n"
+    "      Priority: !Ref Secret\n"))
+
+(deftest test-cfn-lint-yaml-parameters
+  (let [[result args parameter-file] (cfn-lint-args {} yaml-template {:Known 50010 :Secret 50020})]
+    (testing "YAML templates, including CloudFormation tags, get their parameters linted"
+      (is (some #{"--parameter-files"} args))
+      (is (str/includes? (str result) "'50010'")))
+    (testing "NoEcho is found in YAML templates"
+      (is (= [{:ParameterKey "Known" :ParameterValue "50010"}] parameter-file))
+      (is (not (str/includes? (str result) "50020"))))))
 
 (deftest test-early-validation-linting
   (testing "cfn-lint works in :early-validate when there are no refs in the template"

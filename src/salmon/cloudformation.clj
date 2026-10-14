@@ -1,6 +1,7 @@
 (ns salmon.cloudformation
   (:require
    [babashka.fs :as fs]
+   [clj-yaml.core :as yaml]
    [clojure.data.json :as json]
    [clojure.java.shell :as sh]
    [clojure.string :as str]
@@ -56,10 +57,20 @@
       (-> config :aws-client-opts (assoc :api :cloudformation) u/client))))
 
 (defn- template-parameters
-  "Returns the Parameters section of a JSON template, with string keys,
-   or nil if the template isn't JSON (such as YAML from a template URL)."
+  "Returns the Parameters section of a JSON or YAML template, with
+   string keys, or nil if the template can't be parsed."
   [^String template]
-  (let [data (try (json/read-str template) (catch Exception _ nil))]
+  (let [data (or
+               (try (json/read-str template) (catch Exception _ nil))
+               ; Not every JSON document is YAML 1.1, such as JSON with
+               ; \/ escapes, so YAML is only tried second.
+               ; CloudFormation's short-form tags, like !Ref, are
+               ; replaced by their values.
+               (try
+                 (yaml/parse-string template
+                   :keywords false
+                   :unknown-tag-fn :value)
+                 (catch Exception _ nil)))]
     (when (map? data)
       (or (get data "Parameters") {}))))
 
@@ -67,8 +78,8 @@
   "Returns the parameters that are safe to give cfn-lint, keyed by name,
    and whether any parameter without a Default was left out.
    NoEcho values are left out, since cfn-lint includes resolved values in
-   its messages. Without a JSON template, NoEcho can't be checked, so no
-   parameters are given."
+   its messages. If the template can't be parsed, NoEcho can't be
+   checked, so no parameters are given."
   [template parameters]
   (if-let [template-params (template-parameters template)]
     (let [no-echo? #(contains? #{true "true"} (get-in template-params [% "NoEcho"]))

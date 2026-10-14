@@ -12,6 +12,8 @@
 - When `:lint?` is true and all non-default parameters are known,
   use cfn-lint to validate template parameters.
   See cfn-lint rule E2900.
+- Add support for YAML CloudFormation templates.
+  - Add a dependency on clj-commons/clj-yaml.
 
 ## v0.31.0 (2025-12-05)
 
