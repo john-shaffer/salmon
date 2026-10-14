@@ -1,5 +1,7 @@
 ## Unreleased
 
+## v0.32.1 (2026-10-14)
+
 - Fix an error in `:salmon/early-validate` when a template or
   change set's `:parameters` is a ref instead of a map.
 
