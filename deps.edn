@@ -39,7 +39,7 @@
     ; Used by malli.generator/-re-gen
     com.gfredericks/test.chuck {:mvn/version "0.2.15"}
     hashp/hashp {:mvn/version "0.2.2"}
-    lambdaisland/kaocha {:git/url "https://github.com/insilica/kaocha.git"
+    lambdaisland/kaocha {:git/url "https://github.com/john-shaffer/kaocha.git"
                          :sha "811d37448e10b52e78dd2ef6ba95535e59f6bbda"}
     lambdaisland/kaocha-cloverage {:mvn/version "1.1.89"}
     org.slf4j/slf4j-api {:mvn/version "2.0.17"}}
