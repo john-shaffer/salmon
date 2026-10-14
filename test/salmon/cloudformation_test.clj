@@ -158,6 +158,12 @@
                                  :parameters (assoc params :Priority "49995")
                                  :template listener-rule-template))
             :salmon/early-validate)))
+    (testing "NoEcho parameters are left out of linting, so their values aren't exposed"
+      (is (ds/signal (system-a (stack-a :lint? true
+                                 :parameters (assoc params :Priority 50010)
+                                 :template (assoc-in listener-rule-template
+                                             [:Parameters :Priority :NoEcho] true)))
+            :salmon/early-validate)))
     (testing "parameters with unresolved refs are left out of linting"
       (is (ds/signal (system-a (stack-a :lint? true
                                  :parameters (assoc params :Priority (ds/ref [:services :T]))

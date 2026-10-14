@@ -153,6 +153,17 @@
     [:or ds/DonutRef
      [:map]]]])
 
+(defn- no-echo-parameter-names
+  "Returns the names of a template's NoEcho parameters, whose values
+   shouldn't be passed to cfn-lint or appear in its output."
+  [template]
+  (let [template (:template template template)]
+    (into #{}
+      (keep (fn [[k {:keys [NoEcho]}]]
+              (when (contains? #{true "true"} NoEcho)
+                (full-name k))))
+      (when (map? template) (:Parameters template)))))
+
 (defn- validate!
   [{:as signal ::ds/keys [component-id system]}
    & {:keys [pre?]}]
@@ -164,7 +175,10 @@
         errors (and schema (m/explain schema config))
         {:keys [change-set lint? parameters template template-url]} config
         resolved-template (val/resolve-refs system component-id template)
+        no-echo (no-echo-parameter-names resolved-template)
         resolved-parameters (->> parameters
+                              (remove (comp no-echo full-name key))
+                              (into {})
                               (u/filter-vals #(val/refs-resolveable? system component-id %))
                               (val/resolve-refs system component-id))]
     (cond
