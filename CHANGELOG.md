@@ -16,9 +16,10 @@
   otherwise hang indefinitely.
 - Time out CloudFormation stack and change set status checks after
   30 seconds and send them again, up to 3 attempts.
-- When `:lint?` is true and all non-default parameters are known,
-  use cfn-lint to validate template parameters.
+- When `:lint?` is true, use cfn-lint to validate template parameters.
   See cfn-lint rule E2900.
+  In `:salmon/early-validate`, this will be skipped if
+  not all required parameters have known values yet.
 - Add support for YAML CloudFormation templates.
   - Add a dependency on clj-commons/clj-yaml.
 

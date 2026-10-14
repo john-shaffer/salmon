@@ -245,12 +245,12 @@
   "Calls cfn-lint! and returns [result args parameters], where args are
    the command-line arguments that it passed to cfn-lint (not sh's
    options), and parameters is the parsed parameter file that it piped
-   to cfn-lint's stdin."
-  [config template parameters]
+   to cfn-lint's stdin. opts are passed to cfn-lint!."
+  [config template parameters & {:as opts}]
   (let [args (atom nil)
         sh sh/sh]
     (with-redefs [sh/sh (fn [& xs] (reset! args xs) (apply sh xs))]
-      (let [result (#'cfn/cfn-lint! config template parameters)
+      (let [result (#'cfn/cfn-lint! config template parameters opts)
             [argv opts] (split-with string? @args)
             in (:in (apply hash-map opts))]
         [result argv (some-> in (json/read-str :key-fn keyword))]))))
@@ -283,6 +283,15 @@
         (let [[result] (cfn-lint-args {} template {:S v})]
           (is (str/includes? (str result) "****") "the invalid value is reported")
           (is (not (str/includes? (str result) v)) "the value is masked"))))))
+
+(deftest test-cfn-lint-required-parameters
+  (let [template (json/write-str listener-rule-template)
+        params {:ListenerArn "arn" :Priority "10"}]
+    (testing "early validation doesn't require parameters that may not be resolved yet"
+      (is (nil? (first (cfn-lint-args {} template params :pre? true)))))
+    (testing "otherwise, a missing parameter without a Default fails linting"
+      (is (re-find #"E2900 'TargetGroupArn' is a required property"
+            (str (first (cfn-lint-args {} template params))))))))
 
 (def yaml-template
   (str "Parameters:\n"

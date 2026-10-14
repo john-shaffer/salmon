@@ -128,7 +128,7 @@
     s
     values))
 
-(defn- cfn-lint! [{:keys [region regions]} template parameters]
+(defn- cfn-lint! [{:keys [region regions]} template parameters {:keys [pre?]}]
   (fs/with-temp-dir [dir {:prefix "salmon-cloudformation"}]
     (let [f (fs/create-file (fs/path dir "cloudformation.template"))
           {:keys [no-echo-values omits-required? parameters]}
@@ -153,7 +153,7 @@
                     ; E2900 requires every parameter without a Default.
                     ; If we are doing an early check and haven't resolved
                     ; all parameters yet, we don't want to require these.
-                    (when (and (seq parameters) omits-required?)
+                    (when (and pre? (seq parameters) omits-required?)
                       ["--ignore-checks" "E2900"])
                     ; sh options must come after all of the arguments
                     (when (seq parameters)
@@ -169,7 +169,7 @@
 
 (defn- template-data
   [{:as config :keys [template-url]}
-   & {:keys [parameters template validate?]
+   & {:keys [parameters pre? template validate?]
       :or {validate? true}}]
   ; unwrap {:template {}} from the template component
   ; while allowing direct template data specification when not using
@@ -185,7 +185,8 @@
                  (cfn-lint! config
                    (or json
                      (slurp url))
-                   parameters))]
+                   parameters
+                   {:pre? pre?}))]
     (if (and errors (not (str/blank? errors)))
       (throw (ex-info errors template-data))
       template-data)))
@@ -277,6 +278,7 @@
       lint?
       (let [{:keys [message]} (template-data config
                                 :parameters resolved-parameters
+                                :pre? pre?
                                 :template resolved-template)]
         (when (seq message)
           (throw (ex-info (str "Template validation failed: " message)
