@@ -1,5 +1,8 @@
 ## Unreleased
 
+- Fix an error in `:salmon/early-validate` when a template or
+  change set's `:parameters` is a ref instead of a map.
+
 ## v0.32.0 (2026-10-14)
 
 - Add `salmon.util/retriable?`, which also retries faults caused by

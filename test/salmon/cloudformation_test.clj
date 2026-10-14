@@ -174,7 +174,22 @@
       (is (ds/signal (system-a (stack-a :lint? true
                                  :parameters (assoc params :Priority (ds/ref [:services :T]))
                                  :template listener-rule-template))
-            :salmon/early-validate)))))
+            :salmon/early-validate)))
+   (testing "parameters that are an unresolved ref are left out of linting"
+     (is (ds/signal (system-a (stack-a :lint? true
+                                :parameters (ds/ref [:services :T])
+                                :template listener-rule-template))
+           :salmon/early-validate)))
+   (testing "parameters that are a resolvable ref are linted"
+     (is (thrown-with-msg?
+           ExceptionInfo
+           #"greater than the maximum of 50000"
+           (cause (ds/signal (-> (system-a (stack-a :lint? true
+                                             :parameters (ds/ref [:services :params])
+                                             :template listener-rule-template))
+                               (assoc-in [::ds/defs :services :params]
+                                 {::ds/start (assoc params :Priority 50010)}))
+                    :salmon/early-validate)))))))
 
 (def three-rule-template
   "A template with a listener rule priority for each kind of parameter:

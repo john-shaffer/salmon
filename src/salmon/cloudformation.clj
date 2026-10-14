@@ -252,9 +252,15 @@
         errors (and schema (m/explain schema config))
         {:keys [change-set lint? parameters template template-url]} config
         resolved-template (val/resolve-refs system component-id template)
-        resolved-parameters (->> parameters
-                              (u/filter-vals #(val/refs-resolveable? system component-id %))
-                              (val/resolve-refs system component-id))]
+        ; parameters may be a ref to a map that isn't available yet
+        resolved-parameters (cond
+                              (val/refs-resolveable? system component-id parameters)
+                              (val/resolve-refs system component-id parameters)
+
+                              (map? parameters)
+                              (->> parameters
+                                (u/filter-vals #(val/refs-resolveable? system component-id %))
+                                (val/resolve-refs system component-id)))]
     (cond
       errors
       (throw
