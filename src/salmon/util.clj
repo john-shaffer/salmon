@@ -13,6 +13,22 @@
   [response]
   (boolean (:cognitect.anomalies/category response)))
 
+(defn aws-error-code
+  "Returns the error code, if present, of an AWS API response."
+  [response]
+  (or (some-> response :ErrorResponse :Error :Code)
+    (some-> response :Response :Errors :Error :Code)
+    (some-> response :Error :Code)
+    (:cognitect.aws.error/code response)))
+
+(defn aws-error-message
+  "Returns the error message, if present, of an AWS API response."
+  [response]
+  (or (some-> response :ErrorResponse :Error :Message)
+    (some-> response :Response :Errors :Error :Message)
+    (some-> response :Error :Message)
+    (:cognitect.anomalies/message response)))
+
 (defn- io-exception? [t]
   (->> (iterate ex-cause t)
     (take-while some?)
@@ -61,22 +77,6 @@
          :else {:cognitect.anomalies/category :cognitect.anomalies/interrupted
                 :cognitect.anomalies/message
                 (str "Request timed out " attempt " times after " timeout-msec " ms")})))))
-
-(defn aws-error-code
-  "Returns the error code, if present, of an AWS API response."
-  [response]
-  (or (some-> response :ErrorResponse :Error :Code)
-    (some-> response :Response :Errors :Error :Code)
-    (some-> response :Error :Code)
-    (:cognitect.aws.error/code response)))
-
-(defn aws-error-message
-  "Returns the error message, if present, of an AWS API response."
-  [response]
-  (or (some-> response :ErrorResponse :Error :Message)
-    (some-> response :Response :Errors :Error :Message)
-    (some-> response :Error :Message)
-    (:cognitect.anomalies/message response)))
 
 (defn b64-decode
   "Decodes a base64-encoded string to a byte array."
