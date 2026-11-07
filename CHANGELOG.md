@@ -1,5 +1,8 @@
 ## Unreleased
 
+- Fix refs to values inside of a started component resolving to nil in
+  `:salmon/early-validate`, which gave cfn-lint blank parameters.
+
 ## v0.32.1 (2026-10-14)
 
 - Fix an error in `:salmon/early-validate` when a template or

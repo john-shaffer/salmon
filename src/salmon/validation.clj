@@ -42,7 +42,7 @@
 (defn- resolve-ref [system referencing-component-id ref]
   (let [{::ds/keys [instances resolved-defs]} system
         rkey (get-ref-path referencing-component-id ref)
-        instance (get-in instances rkey)
+        instance (get-in instances (take 2 rkey))
         {:as def ::ds/keys [resolve-refs]} (get-in resolved-defs rkey)]
     (cond
       resolve-refs (-> (resolve-refs system (take 2 rkey))
